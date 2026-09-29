@@ -60,6 +60,8 @@ export async function aprobarMiembro(memberId: string): Promise<ActionResult> {
 // ────────────────────────────────────────────────────────────────
 export async function rechazarPendiente(memberId: string): Promise<ActionResult> {
   const { supabase, groupId, error } = await requireAdmin();
+  export async function darDeBaja(memberId: string): Promise<ActionResult> {
+  const { supabase, groupId, error } = await requireAdmin();
   if (error) return { ok: false, error };
 
   const { error: err } = await supabase
@@ -70,11 +72,44 @@ export async function rechazarPendiente(memberId: string): Promise<ActionResult>
 
   if (err) {
     console.error(err);
-    return { ok: false, error: "Error al rechazar" };
+    return { ok: false, error: "Error al dar de baja" };
+  }
+
+  // Limpiar las asistencias futuras de este miembro
+  const { data: partidosFuturos } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("group_id", groupId)
+    .in("status", ["programada"]);
+
+  if (partidosFuturos && partidosFuturos.length > 0) {
+    const ids = partidosFuturos.map((p) => p.id);
+    await supabase
+      .from("attendance")
+      .delete()
+      .in("match_id", ids)
+      .eq("member_id", memberId);
+
+    // Sacarlo de cualquier equipo de esos partidos
+    const { data: teams } = await supabase
+      .from("fantasy_teams")
+      .select("id")
+      .in("match_id", ids);
+
+    const teamIds = (teams ?? []).map((t) => t.id);
+    if (teamIds.length > 0) {
+      await supabase
+        .from("fantasy_picks")
+        .delete()
+        .in("team_id", teamIds)
+        .eq("member_id", memberId);
+    }
   }
 
   revalidatePath("/config/plantel");
-  return { ok: true, message: "Solicitud rechazada" };
+  revalidatePath("/convocatoria");
+  revalidatePath("/inicio");
+  return { ok: true, message: "Miembro dado de baja" };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -95,11 +130,41 @@ export async function suspenderMiembro(memberId: string): Promise<ActionResult> 
     return { ok: false, error: "Error al suspender" };
   }
 
-  revalidatePath("/config/plantel");
-  return { ok: true, message: "Miembro suspendido" };
-}
+  // Limpiar las asistencias futuras
+  const { data: partidosFuturos } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("group_id", groupId)
+    .in("status", ["programada"]);
 
-// ────────────────────────────────────────────────────────────────
+  if (partidosFuturos && partidosFuturos.length > 0) {
+    const ids = partidosFuturos.map((p) => p.id);
+    await supabase
+      .from("attendance")
+      .delete()
+      .in("match_id", ids)
+      .eq("member_id", memberId);
+
+    const { data: teams } = await supabase
+      .from("fantasy_teams")
+      .select("id")
+      .in("match_id", ids);
+
+    const teamIds = (teams ?? []).map((t) => t.id);
+    if (teamIds.length > 0) {
+      await supabase
+        .from("fantasy_picks")
+        .delete()
+        .in("team_id", teamIds)
+        .eq("member_id", memberId);
+    }
+  }
+
+  revalidatePath("/config/plantel");
+  revalidatePath("/convocatoria");
+  revalidatePath("/inicio");
+  return { ok: true, message: "Miembro suspendido" };
+}// ────────────────────────────────────────────────────────────────
 // Rehabilitar un miembro suspendido
 // ────────────────────────────────────────────────────────────────
 export async function rehabilitarMiembro(memberId: string): Promise<ActionResult> {
