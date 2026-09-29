@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import type { Fila, MiPick } from "./page";
@@ -31,6 +31,7 @@ type Props = {
 };
 
 type Slot = "titular" | "suplente";
+type EstadoGuardado = "idle" | "guardando" | "guardado" | "error";
 
 export default function ConvocatoriaClient({
   matchId,
@@ -72,7 +73,6 @@ export default function ConvocatoriaClient({
     [convocados]
   );
 
-  // Solo los jugables son seleccionables para armar equipo
   const idsValidos = useMemo(
     () => new Set(jugables.map((c) => c.member_id)),
     [jugables]
@@ -92,7 +92,9 @@ export default function ConvocatoriaClient({
   const [picksGuardados, setPicksGuardados] = useState<Map<string, Slot>>(
     picksDelServer
   );
-  const [guardandoEquipo, setGuardandoEquipo] = useState(false);
+  const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>("idle");
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  const guardadoRecienteRef = useRef<NodeJS.Timeout | null>(null);
 
   const serverKey = useMemo(() => {
     const arr = Array.from(picksDelServer.entries()).sort((a, b) =>
@@ -104,6 +106,7 @@ export default function ConvocatoriaClient({
   useEffect(() => {
     setPicks(picksDelServer);
     setPicksGuardados(picksDelServer);
+    setEstadoGuardado("idle");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverKey]);
 
@@ -121,16 +124,6 @@ export default function ConvocatoriaClient({
 
   const titularesSet = new Set(titulares);
 
-  const hayCambios = useMemo(() => {
-    if (picks.size !== picksGuardados.size) return true;
-    for (const [k, v] of picks) {
-      if (picksGuardados.get(k) !== v) return true;
-    }
-    return false;
-  }, [picks, picksGuardados]);
-
-  const guardado = !hayCambios && picks.size > 0;
-
   const total = useMemo(() => {
     let sum = 0;
     for (const [id] of picks) {
@@ -144,8 +137,48 @@ export default function ConvocatoriaClient({
     titulares.length === titularesEsperados &&
     (presupuesto === null || total <= presupuesto);
 
-  const puedeGuardarEquipo =
-    equipoCompleto && hayCambios && !guardandoEquipo && !equiposBloqueados;
+  const hayCambios = useMemo(() => {
+    if (picks.size !== picksGuardados.size) return true;
+    for (const [k, v] of picks) {
+      if (picksGuardados.get(k) !== v) return true;
+    }
+    return false;
+  }, [picks, picksGuardados]);
+
+  // ── AUTOGUARDADO ──
+  // Cuando hay cambios, el equipo está completo, y no estamos bloqueados,
+  // esperamos 800ms y guardamos solo.
+  useEffect(() => {
+    if (equiposBloqueados) return;
+    if (!equipoCompleto) return;
+    if (!hayCambios) return;
+    if (estadoGuardado === "guardando") return;
+
+    const timer = setTimeout(async () => {
+      setEstadoGuardado("guardando");
+      setErrorGuardado(null);
+
+      const arr: MiPick[] = Array.from(picks.entries()).map(
+        ([member_id, slot]) => ({ member_id, slot })
+      );
+
+      const res = await guardarEquipo(matchId, arr);
+      if (res.ok) {
+        setPicksGuardados(new Map(picks));
+        setEstadoGuardado("guardado");
+        if (guardadoRecienteRef.current) clearTimeout(guardadoRecienteRef.current);
+        guardadoRecienteRef.current = setTimeout(() => {
+          setEstadoGuardado("idle");
+        }, 2000);
+      } else {
+        setEstadoGuardado("error");
+        setErrorGuardado(res.error ?? "Error al guardar");
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks, equipoCompleto, equiposBloqueados, matchId]);
 
   function toggleTitular(id: string) {
     if (equiposBloqueados) return;
@@ -175,26 +208,6 @@ export default function ConvocatoriaClient({
         m.set(id, "suplente");
       }
       return m;
-    });
-  }
-
-  function guardarMiEquipo() {
-    setGuardandoEquipo(true);
-    const arr: MiPick[] = Array.from(picks.entries()).map(([member_id, slot]) => ({
-      member_id,
-      slot,
-    }));
-    startTransition(async () => {
-      const res = await guardarEquipo(matchId, arr);
-      if (res.ok) {
-        setPicksGuardados(new Map(picks));
-        setToast(res.message ?? "Equipo guardado");
-      } else {
-        setToast(res.error ?? "Error");
-      }
-      setGuardandoEquipo(false);
-      setTimeout(() => setToast(null), 2500);
-      router.refresh();
     });
   }
 
@@ -320,15 +333,17 @@ export default function ConvocatoriaClient({
   const yoAnotado = miEstado === "anotado" || miEstado === "presente";
   const yoEspera = miEstado === "lista_espera";
 
-  let textoGuardar = "Guardar equipo";
-  if (guardandoEquipo) textoGuardar = "Guardando...";
-  else if (guardado) textoGuardar = "✓ Equipo guardado";
-  else if (!equipoCompleto) {
+  // Texto del indicador de guardado
+  let textoEstado = "";
+  if (estadoGuardado === "guardando") textoEstado = "Guardando...";
+  else if (estadoGuardado === "guardado") textoEstado = "✓ Guardado";
+  else if (estadoGuardado === "error") textoEstado = `⚠ ${errorGuardado}`;
+  else if (!equipoCompleto && !equiposBloqueados) {
     const faltanTit = titularesEsperados - titulares.length;
     if (faltanTit > 0)
-      textoGuardar = `Faltan ${faltanTit} titular${faltanTit !== 1 ? "es" : ""}`;
+      textoEstado = `Faltan ${faltanTit} titular${faltanTit !== 1 ? "es" : ""}`;
     else if (presupuesto !== null && total > presupuesto)
-      textoGuardar = "Te pasaste del presupuesto";
+      textoEstado = "Te pasaste del presupuesto";
   }
 
   return (
@@ -500,18 +515,22 @@ export default function ConvocatoriaClient({
         className="sticky top-0 z-30 mx-3 mt-3 rounded-2xl px-4 py-3"
         style={{
           background: "rgba(17,53,42,0.96)",
-          border: `1px solid ${guardado ? "rgba(242,182,50,0.4)" : "rgba(255,255,255,0.08)"}`,
+          border: `1px solid ${
+            estadoGuardado === "guardado"
+              ? "rgba(242,182,50,0.6)"
+              : estadoGuardado === "error"
+              ? "rgba(226,59,77,0.5)"
+              : "rgba(255,255,255,0.08)"
+          }`,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
+          transition: "border-color 0.3s",
         }}
       >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div
-              className="bebas text-base tracking-wider"
-              style={{ color: guardado ? "var(--gold)" : "var(--tx)" }}
-            >
-              MI EQUIPO {guardado && "· GUARDADO"}
+            <div className="bebas text-base tracking-wider">
+              MI EQUIPO
             </div>
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>
               T {titulares.length}/{titularesEsperados} · S {suplente ? 1 : 0}/1 ·{" "}
@@ -529,24 +548,27 @@ export default function ConvocatoriaClient({
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={guardarMiEquipo}
-            disabled={!puedeGuardarEquipo}
-            className="flex-none rounded-xl px-3 py-2 text-xs font-bold transition"
-            style={{
-              background: guardado
-                ? "rgba(242,182,50,0.15)"
-                : puedeGuardarEquipo
-                ? "var(--or)"
-                : "rgba(238,90,42,0.4)",
-              color: guardado ? "var(--gold)" : "#fff",
-              border: guardado ? "1px solid rgba(242,182,50,0.4)" : "none",
-              cursor: puedeGuardarEquipo ? "pointer" : "not-allowed",
-            }}
-          >
-            {textoGuardar}
-          </button>
+          {textoEstado && (
+            <div
+              className="flex-none rounded-xl px-3 py-2 text-xs font-bold transition"
+              style={{
+                background:
+                  estadoGuardado === "guardado"
+                    ? "rgba(242,182,50,0.2)"
+                    : estadoGuardado === "error"
+                    ? "rgba(226,59,77,0.2)"
+                    : "rgba(255,255,255,0.05)",
+                color:
+                  estadoGuardado === "guardado"
+                    ? "var(--gold)"
+                    : estadoGuardado === "error"
+                    ? "var(--red)"
+                    : "var(--dim)",
+              }}
+            >
+              {textoEstado}
+            </div>
+          )}
         </div>
       </div>
 
@@ -923,10 +945,7 @@ function FilaEspera({
       <Avatar alias={c.alias} photoUrl={c.photo_url} size={36} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span
-            className="truncate text-sm font-semibold"
-            style={{ color: "var(--dim)" }}
-          >
+          <span className="truncate text-sm font-semibold" style={{ color: "var(--dim)" }}>
             {c.alias}
           </span>
           {c.is_me && (
