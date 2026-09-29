@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import BotonAnotarse from "./BotonAnotarse";
+import NoticiaForm from "./NoticiaForm";
+import NoticiaCard from "./NoticiaCard";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -28,9 +30,7 @@ export default async function InicioPage() {
     .limit(1)
     .maybeSingle();
 
-  if (!membership || !membership.group) {
-    return null;
-  }
+  if (!membership || !membership.group) return null;
 
   const grupo = membership.group as unknown as {
     id: string;
@@ -38,13 +38,11 @@ export default async function InicioPage() {
     slug: string;
   };
 
-  // Foto del usuario
   const { data: miPerfil } = await supabase
     .from("profiles")
     .select("photo_url")
     .eq("id", user.id)
     .maybeSingle();
-  const miPhotoUrl = miPerfil?.photo_url ?? null;
 
   // Próximo partido
   const { data: proximo } = await supabase
@@ -57,7 +55,6 @@ export default async function InicioPage() {
     .limit(1)
     .maybeSingle();
 
-  // Anotados y lista de espera del próximo partido
   let anotadosCount = 0;
   let espera = 0;
   let miEstado: string | null = null;
@@ -89,12 +86,79 @@ export default async function InicioPage() {
   }
 
   // Noticias
-  const { data: noticias } = await supabase
+  const { data: noticiasRaw } = await supabase
     .from("news")
-    .select("id, kind, title, body, created_at")
+    .select("id, kind, title, body, created_at, author_id")
     .eq("group_id", grupo.id)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
+
+  // Autores
+  const authorIds = (noticiasRaw ?? [])
+    .map((n) => n.author_id)
+    .filter((x): x is string => !!x);
+
+  let autores: Record<string, { alias: string; photo: string | null }> = {};
+  if (authorIds.length > 0) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, photo_url, display_name")
+      .in("id", authorIds);
+    autores = Object.fromEntries(
+      (profs ?? []).map((p) => [p.id, { alias: p.display_name, photo: p.photo_url }])
+    );
+  }
+
+  // Reacciones
+  const newsIds = (noticiasRaw ?? []).map((n) => n.id);
+  let reaccionesRaw: { news_id: string; member_id: string; emoji: string }[] = [];
+  if (newsIds.length > 0) {
+    const { data: reacs } = await supabase
+      .from("reactions")
+      .select("news_id, member_id, emoji")
+      .in("news_id", newsIds);
+    reaccionesRaw = reacs ?? [];
+  }
+
+  const reaccionesPorNoticia = new Map<
+    string,
+    Map<string, { cantidad: number; yo: boolean }>
+  >();
+  for (const r of reaccionesRaw) {
+    if (!reaccionesPorNoticia.has(r.news_id)) {
+      reaccionesPorNoticia.set(r.news_id, new Map());
+    }
+    const mapa = reaccionesPorNoticia.get(r.news_id)!;
+    const actual = mapa.get(r.emoji) ?? { cantidad: 0, yo: false };
+    actual.cantidad++;
+    if (r.member_id === membership.id) actual.yo = true;
+    mapa.set(r.emoji, actual);
+  }
+
+  const noticias = (noticiasRaw ?? []).map((n) => {
+    const mapa = reaccionesPorNoticia.get(n.id) ?? new Map();
+    const reacciones = ["🔥", "😂", "👏"].map((emoji) => {
+      const r = mapa.get(emoji);
+      return {
+        emoji,
+        cantidad: r?.cantidad ?? 0,
+        yo_reaccione: r?.yo ?? false,
+      };
+    });
+
+    const autor = n.author_id ? autores[n.author_id] : null;
+
+    return {
+      id: n.id,
+      kind: n.kind as "auto" | "usuario",
+      titulo: n.title,
+      cuerpo: n.body,
+      authorAlias: autor?.alias ?? null,
+      authorPhoto: autor?.photo ?? null,
+      createdAt: n.created_at,
+      reacciones,
+    };
+  });
 
   const isAdmin = membership.role === "admin";
   const kickoff = proximo ? new Date(proximo.kickoff_at) : null;
@@ -103,15 +167,19 @@ export default async function InicioPage() {
 
   return (
     <div>
-      {/* Header con avatar → perfil */}
+      {/* Header */}
       <header className="px-4 pb-2 pt-6">
-                <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <Link
             href="/perfil"
             className="flex min-w-0 items-start gap-3 no-underline"
             style={{ color: "var(--tx)" }}
           >
-            <Avatar alias={membership.display_name} photoUrl={miPhotoUrl} size={48} />
+            <Avatar
+              alias={membership.display_name}
+              photoUrl={miPerfil?.photo_url ?? null}
+              size={48}
+            />
             <div className="min-w-0">
               <h1 className="bebas text-3xl leading-tight">
                 Hola, {membership.display_name}
@@ -218,7 +286,7 @@ export default async function InicioPage() {
         </div>
       )}
 
-      {/* Masthead de noticias */}
+      {/* Masthead */}
       <div className="bebas mt-6 px-4 text-2xl tracking-wider">
         EL DT DE TU VIDA INFORMA
       </div>
@@ -226,39 +294,23 @@ export default async function InicioPage() {
         Novedades del grupo
       </p>
 
-      {/* Cuadro para publicar */}
-      <div
-        className="mx-3 mt-3 rounded-2xl px-4 py-3 text-sm"
-        style={{
-          background: "rgba(255,255,255,0.05)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          color: "var(--dim)",
-        }}
-      >
-        ✍️ Próximamente: escribirle al grupo
-      </div>
+      {/* Formulario para publicar */}
+      <NoticiaForm />
 
       {/* Noticias */}
-      {noticias && noticias.length > 0 ? (
+      {noticias.length > 0 ? (
         noticias.map((n) => (
-          <article
+          <NoticiaCard
             key={n.id}
-            className="mx-3 mt-2 rounded-2xl px-4 py-3 text-sm"
-            style={{
-              background:
-                n.kind === "auto"
-                  ? "rgba(242,182,50,0.1)"
-                  : "rgba(255,255,255,0.05)",
-              borderLeft: n.kind === "auto" ? "3px solid var(--gold)" : "none",
-            }}
-          >
-            <div className="font-semibold">{n.title}</div>
-            {n.body && (
-              <div className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-                {n.body}
-              </div>
-            )}
-          </article>
+            newsId={n.id}
+            kind={n.kind}
+            titulo={n.titulo}
+            cuerpo={n.cuerpo}
+            authorAlias={n.authorAlias}
+            authorPhoto={n.authorPhoto}
+            createdAt={n.createdAt}
+            reacciones={n.reacciones}
+          />
         ))
       ) : (
         <div
