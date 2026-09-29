@@ -31,8 +31,8 @@ export default function ImageCropper({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col"
+       <div
+      className="fixed inset-0 z-[100] flex flex-col"
       style={{ background: "rgba(0,0,0,0.92)" }}
     >
       <div className="relative flex-1">
@@ -49,7 +49,13 @@ export default function ImageCropper({
         />
       </div>
 
-      <div className="p-4" style={{ background: "#0a1810" }}>
+           <div
+        className="p-4"
+        style={{
+          background: "#0a1810",
+          paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+        }}
+      >
         <div className="mx-auto max-w-md">
           <input
             type="range"
