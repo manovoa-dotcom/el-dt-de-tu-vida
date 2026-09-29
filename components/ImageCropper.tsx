@@ -31,10 +31,27 @@ export default function ImageCropper({
   }
 
   return (
-       <div
-      className="fixed inset-0 z-[100] flex flex-col"
-      style={{ background: "rgba(0,0,0,0.92)" }}
+    <div
+      className="fixed inset-0 flex flex-col"
+      style={{
+        background: "rgba(0,0,0,0.95)",
+        zIndex: 9999,
+      }}
     >
+      {/* Título */}
+      <div
+        className="flex items-center justify-between px-4 py-3"
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+          paddingTop: "calc(0.75rem + env(safe-area-inset-top))",
+        }}
+      >
+        <span className="bebas text-lg tracking-wider" style={{ color: "var(--gold)" }}>
+          AJUSTÁ TU FOTO
+        </span>
+      </div>
+
+      {/* Área de recorte */}
       <div className="relative flex-1">
         <Cropper
           image={imageSrc}
@@ -49,31 +66,48 @@ export default function ImageCropper({
         />
       </div>
 
-           <div
-        className="p-4"
+      {/* Controles */}
+      <div
+        className="px-4 py-4"
         style={{
           background: "#0a1810",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
           paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
         }}
       >
         <div className="mx-auto max-w-md">
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={0.05}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-full"
-            style={{ accentColor: "var(--gold)" }}
-          />
-          <div className="mt-3 flex gap-2">
+          {/* Slider de zoom */}
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-xs" style={{ color: "var(--dim)" }}>
+              🔍
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.05}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="flex-1"
+              style={{ accentColor: "var(--gold)" }}
+            />
+            <span className="text-xs" style={{ color: "var(--dim)" }}>
+              🔍
+            </span>
+          </div>
+
+          {/* Botones */}
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={onCancel}
               disabled={loading}
               className="flex-1 rounded-xl border py-3 text-sm font-bold transition disabled:opacity-50"
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: "var(--dim)" }}
+              style={{
+                borderColor: "rgba(255,255,255,0.25)",
+                color: "var(--tx)",
+                background: "transparent",
+              }}
             >
               Cancelar
             </button>
@@ -84,7 +118,7 @@ export default function ImageCropper({
               className="flex-1 rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
               style={{ background: "var(--or)", color: "#fff" }}
             >
-              {loading ? "Guardando..." : "Guardar foto"}
+              {loading ? "Guardando..." : "✓ Guardar foto"}
             </button>
           </div>
         </div>
@@ -102,7 +136,7 @@ async function getCroppedImg(
 ): Promise<Blob | null> {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
-  const size = 512; // 512x512 es más que suficiente para un avatar
+  const size = 512;
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
@@ -121,11 +155,7 @@ async function getCroppedImg(
   );
 
   return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob),
-      "image/jpeg",
-      0.9
-    );
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9);
   });
 }
 
