@@ -41,7 +41,7 @@ export async function guardarResultados(
 
   const { data: match } = await supabase
     .from("matches")
-    .select("id, group_id, number, status")
+    .select("id, group_id, number, status, season_id")
     .eq("id", matchId)
     .eq("group_id", membership.group_id)
     .maybeSingle();
@@ -113,23 +113,28 @@ export async function guardarResultados(
   // DT de la fecha
   const { data: topDT } = await supabase
     .from("dt_scores")
-    .select("dt_member_id, points, dt:group_members!dt_scores_dt_member_id_fkey(display_name)")
+    .select("dt_member_id, points")
     .eq("match_id", matchId)
     .order("points", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-   if (topDT) {
-    const dt = topDT.dt as unknown as { display_name: string } | null;
-    if (dt) {
+  if (topDT && topDT.points > 0) {
+    const { data: dtInfo } = await supabase
+      .from("group_members")
+      .select("display_name")
+      .eq("id", topDT.dt_member_id)
+      .maybeSingle();
+
+    if (dtInfo) {
       const frase = await getFraseNoUsada("dt_fecha");
       const cuerpo = frase
-        ? `El DT ${dt.display_name} declaró ante la prensa:\n\n"${frase}"`
+        ? `El DT ${dtInfo.display_name} declaró ante la prensa:\n\n"${frase}"`
         : `Sumó ${topDT.points} puntos con su equipo.`;
 
       await crearNoticiaAuto({
         groupId: membership.group_id,
-        title: `🏆 DT de la Fecha ${match.number}: ${dt.display_name}`,
+        title: `🏆 DT de la Fecha ${match.number}: ${dtInfo.display_name}`,
         body: cuerpo,
         payload: { match_id: matchId, member_id: topDT.dt_member_id },
       });
@@ -139,26 +144,50 @@ export async function guardarResultados(
   // Equipo Ideal
   const { data: topJugadores } = await supabase
     .from("player_scores")
-    .select("member_id, points, jugador:group_members!player_scores_member_id_fkey(display_name)")
+    .select("member_id, points")
     .eq("match_id", matchId)
     .gt("points", 0)
     .order("points", { ascending: false })
     .limit(5);
 
   if (topJugadores && topJugadores.length > 0) {
+    const ids = topJugadores.map((j) => j.member_id);
+    const { data: nombresRaw } = await supabase
+      .from("group_members")
+      .select("id, display_name")
+      .in("id", ids);
+
+    const nombresMap = new Map(
+      (nombresRaw ?? []).map((n) => [n.id, n.display_name])
+    );
     const nombres = topJugadores
-      .map((j) => {
-        const m = j.jugador as unknown as { display_name: string } | null;
-        return m?.display_name;
-      })
+      .map((j) => nombresMap.get(j.member_id))
       .filter((x): x is string => !!x)
       .join(", ");
 
-    await crearNoticiaAuto({
-      groupId: membership.group_id,
-      title: `⭐ Equipo Ideal de la Fecha ${match.number}`,
-      body: nombres,
-      payload: { match_id: matchId },
+    if (nombres) {
+      await crearNoticiaAuto({
+        groupId: membership.group_id,
+        title: `⭐ Equipo Ideal de la Fecha ${match.number}`,
+        body: nombres,
+        payload: { match_id: matchId },
+      });
+    }
+  }
+
+  // 7. Recalcular valor de mercado para la próxima fecha programada
+  const { data: proximoPartido } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("season_id", match.season_id)
+    .eq("status", "programada")
+    .order("number", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (proximoPartido) {
+    await supabase.rpc("calcular_valor_mercado", {
+      p_match_id: proximoPartido.id,
     });
   }
 
@@ -166,6 +195,7 @@ export async function guardarResultados(
   revalidatePath("/inicio");
   revalidatePath("/resultados");
   revalidatePath("/ranking");
+  revalidatePath("/convocatoria");
 
   return { ok: true, message: "Resultados guardados y puntajes calculados" };
 }

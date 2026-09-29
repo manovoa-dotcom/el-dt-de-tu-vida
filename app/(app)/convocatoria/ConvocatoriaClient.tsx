@@ -879,8 +879,8 @@ function FilaConvocado({
             </span>
           )}
         </div>
-        <div className="text-[11px]" style={{ color: "var(--gold)" }}>
-          {c.valor} pts
+         <div className="text-[11px]" style={{ color: "var(--gold)" }}>
+          Valor de mercado: <b>{c.valor}</b>
         </div>
       </div>
       <button

@@ -12,8 +12,6 @@ export type ActionResult = {
 // Convierte "2026-09-26T20:00" (datetime-local en hora AR) a ISO UTC.
 // Asumimos que el grupo está en America/Argentina/Buenos_Aires (UTC-3).
 function localToUtcIso(local: string): string {
-  // El input datetime-local no incluye zona horaria. Le agregamos -03:00
-  // y lo convertimos a UTC.
   return new Date(`${local}:00-03:00`).toISOString();
 }
 
@@ -27,7 +25,6 @@ export async function guardarPartido(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  // Verificar admin
   const { data: membership } = await supabase
     .from("group_members")
     .select("group_id, role")
@@ -41,7 +38,6 @@ export async function guardarPartido(
   }
   const groupId = membership.group_id;
 
-  // Leer form
   const kickoffLocal = String(formData.get("kickoff") || "").trim();
   const place = String(formData.get("place") || "").trim();
   const cupo = parseInt(String(formData.get("cupo") || "10"), 10);
@@ -59,13 +55,11 @@ export async function guardarPartido(
     return { ok: false, error: "Presupuesto inválido" };
   }
 
-  // Calcular ventanas
   const kickoffUtc = localToUtcIso(kickoffLocal);
   const kickoffDate = new Date(kickoffUtc);
   const bajaCloses = new Date(kickoffDate.getTime() - 3 * 60 * 60 * 1000);
   const teamsLock = new Date(kickoffDate.getTime() - 10 * 60 * 1000);
 
-  // Convocatoria abre: el próximo día+hora configurado del grupo, ANTES del kickoff.
   const { data: grupo } = await supabase
     .from("groups")
     .select("convocatoria_dow, convocatoria_time")
@@ -75,42 +69,42 @@ export async function guardarPartido(
   const convDow = grupo?.convocatoria_dow ?? 1;
   const convTime = grupo?.convocatoria_time ?? "10:00";
 
-  // Buscar el próximo día de la semana configurado, en las últimas 2 semanas
   let convOpen = new Date(kickoffDate);
   for (let i = 0; i < 14; i++) {
     convOpen.setUTCDate(convOpen.getUTCDate() - 1);
     if (convOpen.getUTCDay() === convDow) break;
   }
-  // Setear la hora configurada (en AR = UTC-3)
   const [hh, mm] = convTime.split(":").map((x: string) => parseInt(x, 10));
   const convOpenStr = `${convOpen.toISOString().slice(0, 10)}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00-03:00`;
   const convOpenUtc = new Date(convOpenStr).toISOString();
 
-if (matchId) {
-  // Actualizar partido existente
-  const { error } = await supabase
-    .from("matches")
-    .update({
-      kickoff_at: kickoffUtc,
-      place: place || null,
-      cupo,
-      budget,
-      baja_closes_at: bajaCloses.toISOString(),
-      teams_lock_at: teamsLock.toISOString(),
-      convocatoria_opens_at: convOpenUtc,
-    })
-    .eq("id", matchId)
-    .eq("group_id", groupId);
+  if (matchId) {
+    // ─── Actualizar partido existente ───
+    const { error } = await supabase
+      .from("matches")
+      .update({
+        kickoff_at: kickoffUtc,
+        place: place || null,
+        cupo,
+        budget,
+        baja_closes_at: bajaCloses.toISOString(),
+        teams_lock_at: teamsLock.toISOString(),
+        convocatoria_opens_at: convOpenUtc,
+      })
+      .eq("id", matchId)
+      .eq("group_id", groupId);
 
-  if (error) {
-    console.error(error);
-    return { ok: false, error: "Error al guardar. Probá de nuevo." };
-  }
+    if (error) {
+      console.error(error);
+      return { ok: false, error: "Error al guardar. Probá de nuevo." };
+    }
 
-  
+    // Recalcular valor de mercado para esta fecha
+    await supabase.rpc("calcular_valor_mercado", {
+      p_match_id: matchId,
+    });
   } else {
-    // Crear nuevo partido
-    // Verificar temporada activa
+    // ─── Crear nuevo partido ───
     const { data: season } = await supabase
       .from("seasons")
       .select("id")
@@ -122,7 +116,6 @@ if (matchId) {
       return { ok: false, error: "No hay temporada activa" };
     }
 
-    // Número de fecha = último + 1
     const { data: lastMatch } = await supabase
       .from("matches")
       .select("number")
@@ -133,29 +126,41 @@ if (matchId) {
 
     const numero = (lastMatch?.number ?? 0) + 1;
 
-    const { error } = await supabase.from("matches").insert({
-      group_id: groupId,
-      season_id: season.id,
-      number: numero,
-      kickoff_at: kickoffUtc,
-      place: place || null,
-      cupo,
-      budget,
-      status: "programada",
-      baja_closes_at: bajaCloses.toISOString(),
-      teams_lock_at: teamsLock.toISOString(),
-      convocatoria_opens_at: convOpenUtc,
-    });
+    const { data: matchCreado, error } = await supabase
+      .from("matches")
+      .insert({
+        group_id: groupId,
+        season_id: season.id,
+        number: numero,
+        kickoff_at: kickoffUtc,
+        place: place || null,
+        cupo,
+        budget,
+        status: "programada",
+        baja_closes_at: bajaCloses.toISOString(),
+        teams_lock_at: teamsLock.toISOString(),
+        convocatoria_opens_at: convOpenUtc,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error(error);
       return { ok: false, error: "Error al crear. Probá de nuevo." };
+    }
+
+    // Recalcular valor de mercado para la nueva fecha
+    if (matchCreado) {
+      await supabase.rpc("calcular_valor_mercado", {
+        p_match_id: matchCreado.id,
+      });
     }
   }
 
   revalidatePath("/inicio");
   revalidatePath("/config");
   revalidatePath("/config/partido");
+  revalidatePath("/convocatoria");
   redirect("/inicio");
 }
 
