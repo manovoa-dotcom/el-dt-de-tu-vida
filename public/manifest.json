@@ -1,0 +1,48 @@
+{
+  "name": "El DT de tu vida",
+  "short_name": "El DT",
+  "description": "El WhatsApp organiza el partido. La cancha genera los resultados. La app convierte esos resultados en un campeonato.",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08190f",
+  "theme_color": "#08190f",
+  "categories": ["sports", "social"],
+  "icons": [
+    {
+      "src": "/manifest-icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manifest-icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/manifest-icon-apple",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/manifest-ss-mobile",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Inicio en el celular"
+    },
+    {
+      "src": "/manifest-ss-wide",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "El DT de tu vida"
+    }
+  ]
+}

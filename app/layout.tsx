@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -17,12 +18,22 @@ export const metadata: Metadata = {
   title: "El DT de tu vida",
   description:
     "El WhatsApp organiza el partido. La cancha genera los resultados. La app convierte esos resultados en un campeonato.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "El DT",
+    statusBarStyle: "black-translucent",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: "#08190f",
 };
@@ -37,10 +48,10 @@ export default function RootLayout({
       lang="es"
       className={`notranslate ${bebas.variable} ${inter.variable}`}
     >
-      <head>
-        <meta name="google" content="notranslate" />
-      </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
