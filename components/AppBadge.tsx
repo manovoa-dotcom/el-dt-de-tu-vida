@@ -8,16 +8,19 @@ import { useEffect } from "react";
 export default function AppBadge({ count }: { count: number }) {
   useEffect(() => {
     if (typeof navigator === "undefined") return;
-    // @ts-expect-error: setAppBadge no está en los tipos de TS estándar
-    if (!("setAppBadge" in navigator)) return;
+
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+
+    if (typeof nav.setAppBadge !== "function") return;
 
     try {
       if (count > 0) {
-        // @ts-expect-error: setAppBadge
-        navigator.setAppBadge(count);
-      } else {
-        // @ts-expect-error: clearAppBadge
-        navigator.clearAppBadge?.();
+        nav.setAppBadge(count);
+      } else if (typeof nav.clearAppBadge === "function") {
+        nav.clearAppBadge();
       }
     } catch {
       // Silencioso: si falla, no rompemos la app
