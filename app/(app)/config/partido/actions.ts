@@ -82,7 +82,7 @@ export async function guardarPartido(
     if (convOpen.getUTCDay() === convDow) break;
   }
   // Setear la hora configurada (en AR = UTC-3)
-  const [hh, mm] = convTime.split(":").map((x) => parseInt(x, 10));
+  const [hh, mm] = convTime.split(":").map((x: string) => parseInt(x, 10));
   const convOpenStr = `${convOpen.toISOString().slice(0, 10)}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00-03:00`;
   const convOpenUtc = new Date(convOpenStr).toISOString();
 

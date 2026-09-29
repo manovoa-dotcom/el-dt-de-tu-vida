@@ -115,11 +115,14 @@ export default async function ResultadosPage({
     );
   }
 
-  // Fecha seleccionada (por query o la última)
+    // Fecha seleccionada (por query o la última)
   const params = await searchParams;
   const fechaQuery = params.fecha ? parseInt(params.fecha, 10) : null;
-  const partidoActual =
-    (fechaQuery && partidos.find((p) => p.number === fechaQuery)) ?? partidos[0];
+
+  const partidoActual: PartidoResumen =
+    (fechaQuery
+      ? partidos.find((p) => p.number === fechaQuery)
+      : undefined) ?? partidos[0]!;
 
    // Todos los convocados del partido (jugadores que estuvieron)
   const { data: asistencias } = await supabase
