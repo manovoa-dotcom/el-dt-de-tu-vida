@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import BotonAnotarse from "./BotonAnotarse";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -11,10 +12,8 @@ export default async function InicioPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/login");
 
-  // Membresía activa
   const { data: membership } = await supabase
     .from("group_members")
     .select(`
@@ -22,7 +21,7 @@ export default async function InicioPage() {
       display_name,
       role,
       status,
-      group:groups (id, name, slug, convocatoria_dow, convocatoria_time)
+      group:groups (id, name, slug)
     `)
     .eq("user_id", user.id)
     .in("status", ["activo", "pendiente"])
@@ -30,18 +29,16 @@ export default async function InicioPage() {
     .maybeSingle();
 
   if (!membership || !membership.group) {
-    return null; // el layout ya muestra el mensaje
+    return null;
   }
 
   const grupo = membership.group as unknown as {
     id: string;
     name: string;
     slug: string;
-    convocatoria_dow: number;
-    convocatoria_time: string;
   };
 
-  // Foto del usuario actual
+  // Foto del usuario
   const { data: miPerfil } = await supabase
     .from("profiles")
     .select("photo_url")
@@ -49,20 +46,22 @@ export default async function InicioPage() {
     .maybeSingle();
   const miPhotoUrl = miPerfil?.photo_url ?? null;
 
-  // Próximo partido programado
+  // Próximo partido
   const { data: proximo } = await supabase
     .from("matches")
-    .select("id, number, kickoff_at, place, cupo, status")
+    .select("id, number, kickoff_at, place, cupo, status, baja_closes_at")
     .eq("group_id", grupo.id)
     .eq("status", "programada")
-    .gte("kickoff_at", new Date().toISOString())
+    .gte("kickoff_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .order("kickoff_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  // Cantidad de anotados en el próximo partido
-  let anotados = 0;
+  // Anotados y lista de espera del próximo partido
+  let anotadosCount = 0;
   let espera = 0;
+  let miEstado: string | null = null;
+
   if (proximo) {
     const { count: countAnotados } = await supabase
       .from("attendance")
@@ -76,21 +75,9 @@ export default async function InicioPage() {
       .eq("match_id", proximo.id)
       .eq("status", "lista_espera");
 
-    anotados = countAnotados ?? 0;
+    anotadosCount = countAnotados ?? 0;
     espera = countEspera ?? 0;
-  }
 
-  // Últimas noticias
-  const { data: noticias } = await supabase
-    .from("news")
-    .select("id, kind, title, body, created_at, author_id")
-    .eq("group_id", grupo.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  // ¿Estás anotado al próximo partido?
-  let estoyAnotado = false;
-  if (proximo) {
     const { data: miAsistencia } = await supabase
       .from("attendance")
       .select("status")
@@ -98,45 +85,48 @@ export default async function InicioPage() {
       .eq("member_id", membership.id)
       .maybeSingle();
 
-    estoyAnotado = miAsistencia?.status === "anotado" || miAsistencia?.status === "presente";
+    miEstado = miAsistencia?.status ?? null;
   }
+
+  // Noticias
+  const { data: noticias } = await supabase
+    .from("news")
+    .select("id, kind, title, body, created_at")
+    .eq("group_id", grupo.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
 
   const isAdmin = membership.role === "admin";
   const kickoff = proximo ? new Date(proximo.kickoff_at) : null;
+  const bajaCerrada = proximo ? new Date() > new Date(proximo.baja_closes_at) : false;
+  const completo = proximo ? anotadosCount >= proximo.cupo : false;
 
   return (
     <div>
-      {/* Header */}
+      {/* Header con avatar → perfil */}
       <header className="px-4 pb-2 pt-6">
-                <Link
+        <Link
           href="/perfil"
-          className="flex items-start justify-between gap-3 no-underline"
+          className="flex items-start gap-3 no-underline"
           style={{ color: "var(--tx)" }}
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <Avatar
-              alias={membership.display_name}
-              photoUrl={miPhotoUrl}
-              size={48}
-            />
-            <div className="min-w-0">
-              <h1 className="bebas text-3xl leading-tight">
-                Hola, {membership.display_name}
-              </h1>
-              <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-                {grupo.name}
-                {proximo ? ` · Fecha ${proximo.number}` : " · Sin fecha programada"}
-              </p>
-            </div>
+          <Avatar alias={membership.display_name} photoUrl={miPhotoUrl} size={48} />
+          <div className="min-w-0">
+            <h1 className="bebas text-3xl leading-tight">
+              Hola, {membership.display_name}
+            </h1>
+            <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+              {grupo.name}
+              {proximo ? ` · Fecha ${proximo.number}` : " · Sin fecha programada"}
+            </p>
           </div>
         </Link>
       </header>
 
       {/* Próximo partido */}
       {proximo && kickoff ? (
-        <Link
-          href="/convocatoria"
-          className="mx-3 mt-3 block rounded-2xl p-4 no-underline"
+        <div
+          className="mx-3 mt-3 rounded-2xl p-4"
           style={{
             background: "linear-gradient(160deg, #1b4f39, #11352a)",
             border: "1px solid var(--gold)",
@@ -151,7 +141,8 @@ export default async function InicioPage() {
           </div>
           <div className="bebas mt-1 text-3xl">
             {DIAS[kickoff.getDay()]} {kickoff.getDate()} {MESES[kickoff.getMonth()]} ·{" "}
-            {String(kickoff.getHours()).padStart(2, "0")}:{String(kickoff.getMinutes()).padStart(2, "0")}
+            {String(kickoff.getHours()).padStart(2, "0")}:
+            {String(kickoff.getMinutes()).padStart(2, "0")}
           </div>
           {proximo.place && (
             <div className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
@@ -164,29 +155,29 @@ export default async function InicioPage() {
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition"
               style={{
-                background: "var(--gold)",
-                width: `${Math.min(100, (anotados / proximo.cupo) * 100)}%`,
+                background: completo ? "var(--or)" : "var(--gold)",
+                width: `${Math.min(100, (anotadosCount / proximo.cupo) * 100)}%`,
               }}
             />
           </div>
-          <div className="text-xs" style={{ color: "var(--dim)" }}>
-            {anotados} de {proximo.cupo}
-            {anotados >= proximo.cupo ? " · completo" : ""}
-            {espera > 0 ? ` · lista de espera: ${espera}` : ""}
-          </div>
 
-          <div
-            className="mt-3 rounded-xl border py-2 text-center text-sm font-bold"
-            style={{
-              borderColor: "var(--gold)",
-              color: "var(--gold)",
-            }}
-          >
-            {estoyAnotado ? "✓ Estás anotado" : "Anotarme"}
-          </div>
-        </Link>
+          <BotonAnotarse
+            matchId={proximo.id}
+            miEstado={miEstado}
+            cupo={proximo.cupo}
+            anotadosCount={anotadosCount}
+            bajaCerrada={bajaCerrada}
+            completo={completo}
+          />
+
+          {espera > 0 && (
+            <div className="mt-2 text-center text-[10px]" style={{ color: "var(--dim)" }}>
+              Lista de espera: {espera}
+            </div>
+          )}
+        </div>
       ) : (
         <div
           className="mx-3 mt-3 rounded-2xl p-5 text-center"
@@ -238,7 +229,7 @@ export default async function InicioPage() {
         ✍️ Próximamente: escribirle al grupo
       </div>
 
-      {/* Lista de noticias */}
+      {/* Noticias */}
       {noticias && noticias.length > 0 ? (
         noticias.map((n) => (
           <article
@@ -261,11 +252,11 @@ export default async function InicioPage() {
           </article>
         ))
       ) : (
-        <div className="mx-3 mt-3 rounded-2xl p-5 text-center text-sm"
-             style={{ background: "var(--g1)", color: "var(--dim)" }}>
+        <div
+          className="mx-3 mt-3 rounded-2xl p-5 text-center text-sm"
+          style={{ background: "var(--g1)", color: "var(--dim)" }}
+        >
           Todavía no hay novedades.
-          <br />
-          Cuando se abra la convocatoria, vas a ver acá todas las noticias del grupo.
         </div>
       )}
 
