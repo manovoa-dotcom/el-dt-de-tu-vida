@@ -105,21 +105,30 @@ export default async function InicioPage() {
     <div>
       {/* Header con avatar → perfil */}
       <header className="px-4 pb-2 pt-6">
+                <div className="flex items-start justify-between gap-3">
+          <Link
+            href="/perfil"
+            className="flex min-w-0 items-start gap-3 no-underline"
+            style={{ color: "var(--tx)" }}
+          >
+            <Avatar alias={membership.display_name} photoUrl={miPhotoUrl} size={48} />
+            <div className="min-w-0">
+              <h1 className="bebas text-3xl leading-tight">
+                Hola, {membership.display_name}
+              </h1>
+              <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+                {grupo.name}
+                {proximo ? ` · Fecha ${proximo.number}` : " · Sin fecha programada"}
+              </p>
+            </div>
+          </Link>
+        </div>
         <Link
-          href="/perfil"
-          className="flex items-start gap-3 no-underline"
-          style={{ color: "var(--tx)" }}
+          href="/como-se-juega"
+          className="mt-2 inline-flex items-center gap-1 text-xs no-underline"
+          style={{ color: "var(--gold)" }}
         >
-          <Avatar alias={membership.display_name} photoUrl={miPhotoUrl} size={48} />
-          <div className="min-w-0">
-            <h1 className="bebas text-3xl leading-tight">
-              Hola, {membership.display_name}
-            </h1>
-            <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-              {grupo.name}
-              {proximo ? ` · Fecha ${proximo.number}` : " · Sin fecha programada"}
-            </p>
-          </div>
+          ❓ Cómo se juega
         </Link>
       </header>
 
