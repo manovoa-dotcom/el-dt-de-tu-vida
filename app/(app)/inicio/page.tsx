@@ -5,6 +5,8 @@ import Avatar from "@/components/Avatar";
 import BotonAnotarse from "./BotonAnotarse";
 import NoticiaForm from "./NoticiaForm";
 import NoticiaCard from "./NoticiaCard";
+import MarcarComoLeidas from "./MarcarComoLeidas";
+
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -321,7 +323,10 @@ export default async function InicioPage() {
         </div>
       )}
 
-      <div className="h-8" />
+ <div className="h-8" />
+
+      {/* Marca las noticias como leídas al entrar */}
+      <MarcarComoLeidas />
     </div>
   );
 }

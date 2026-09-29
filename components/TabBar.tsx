@@ -6,18 +6,19 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const TABS = [
-  { href: "/inicio",       icon: "🏠", label: "Inicio" },
+  { href: "/inicio", icon: "🏠", label: "Inicio" },
   { href: "/convocatoria", icon: "👥", label: "Convocatoria" },
-  { href: "/resultados",   icon: "📊", label: "Resultados" },
-  { href: "/ranking",      icon: "🏆", label: "Ranking" },
-  { href: "/config",       icon: "⚙️", label: "Config", adminOnly: true },
+  { href: "/resultados", icon: "📊", label: "Resultados" },
+  { href: "/ranking", icon: "🏆", label: "Ranking" },
+  { href: "/config", icon: "⚙️", label: "Config", adminOnly: true },
 ];
 
 type Props = {
   isAdmin: boolean;
+  badgeInicio?: number;
 };
 
-export default function TabBar({ isAdmin }: Props) {
+export default function TabBar({ isAdmin, badgeInicio = 0 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
@@ -45,20 +46,34 @@ export default function TabBar({ isAdmin }: Props) {
       >
         {tabs.map((t) => {
           const active = pathname.startsWith(t.href);
+          const mostrarBadge = t.href === "/inicio" && badgeInicio > 0;
           return (
             <Link
               key={t.href}
               href={t.href}
-              className="flex-1 py-2 text-center no-underline transition"
+              className="relative flex-1 py-2 text-center no-underline transition"
               style={{ color: active ? "var(--gold)" : "var(--dim)" }}
             >
-              <div className="text-lg leading-none">{t.icon}</div>
+              <div className="relative inline-block">
+                <div className="text-lg leading-none">{t.icon}</div>
+                {mostrarBadge && (
+                  <span
+                    className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                    style={{
+                      background: "var(--red)",
+                      color: "#fff",
+                      boxShadow: "0 0 0 2px #06120b",
+                    }}
+                  >
+                    {badgeInicio > 9 ? "9+" : badgeInicio}
+                  </span>
+                )}
+              </div>
               <div className="mt-1 text-[10px] font-medium">{t.label}</div>
             </Link>
           );
         })}
 
-        {/* Botón de cerrar sesión como último tab */}
         <button
           type="button"
           onClick={() => setConfirm(true)}

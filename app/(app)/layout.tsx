@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import TabBar from "@/components/TabBar";
 import ProfileFab from "@/components/ProfileFab";
 import LogoutButton from "@/components/LogoutButton";
+import AppBadge from "@/components/AppBadge";
 
 
 export default async function AppLayout({
@@ -73,7 +74,7 @@ export default async function AppLayout({
     );
   }
 
-  const isAdmin = membership.role === "admin";
+   const isAdmin = membership.role === "admin";
 
   // Foto del usuario para el FAB
   const { data: perfil } = await supabase
@@ -81,6 +82,34 @@ export default async function AppLayout({
     .select("photo_url")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Contar noticias no leídas
+  const { data: miembro } = await supabase
+    .from("group_members")
+    .select("id, group_id")
+    .eq("user_id", user.id)
+    .eq("status", "activo")
+    .limit(1)
+    .maybeSingle();
+
+  let noLeidas = 0;
+  if (miembro) {
+    const { data: todas } = await supabase
+      .from("news")
+      .select("id")
+      .eq("group_id", miembro.group_id);
+
+    if (todas && todas.length > 0) {
+      const { data: leidas } = await supabase
+        .from("news_reads")
+        .select("news_id")
+        .eq("member_id", miembro.id)
+        .in("news_id", todas.map((n) => n.id));
+
+      const leidasSet = new Set((leidas ?? []).map((r) => r.news_id));
+      noLeidas = todas.filter((n) => !leidasSet.has(n.id)).length;
+    }
+  }
 
   return (
     <div
@@ -93,13 +122,13 @@ export default async function AppLayout({
           "radial-gradient(circle at 80% -10%, #1e6a47 0, transparent 45%)",
       }}
     >
-      <ProfileFab
+            <ProfileFab
         alias={membership.display_name}
         photoUrl={perfil?.photo_url ?? null}
-        />
-
+      />
+      <AppBadge count={noLeidas} />
       {children}
-      <TabBar isAdmin={isAdmin} />
+      <TabBar isAdmin={isAdmin} badgeInicio={noLeidas} />
     </div>
   );
 }
