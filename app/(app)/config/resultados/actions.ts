@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { crearNoticiaAuto } from "@/lib/news";
 
 export type ActionResult = {
   ok: boolean;
@@ -70,18 +71,15 @@ export async function guardarResultados(
   }
 
   // 3. Faltas sin aviso
-  // Borrar tarjetas anteriores de este partido (re-edición)
   await supabase.from("cards").delete().eq("match_id", matchId);
 
   if (faltas.length > 0) {
-    // Marcar asistencia como ausente_sin_aviso
     await supabase
       .from("attendance")
       .update({ status: "ausente_sin_aviso" })
       .eq("match_id", matchId)
       .in("member_id", faltas);
 
-    // Crear tarjetas rojas
     const cards = faltas.map((m) => ({
       match_id: matchId,
       member_id: m,
@@ -103,14 +101,60 @@ export async function guardarResultados(
   // 5. Marcar partido como jugado
   await supabase.from("matches").update({ status: "jugada" }).eq("id", matchId);
 
-  // 6. Noticia automática
-  await supabase.from("news").insert({
-    group_id: membership.group_id,
-    kind: "auto",
-    title: `Resultados cargados · Fecha ${match.number}`,
-    body: "Ya podés ver los puntajes y el Equipo Ideal en la pestaña Resultados.",
+  // 6. Noticias automáticas
+  await crearNoticiaAuto({
+    groupId: membership.group_id,
+    title: `📊 Resultados cargados · Fecha ${match.number}`,
+    body: "Ya podés ver los puntajes en la pestaña Resultados.",
     payload: { match_id: matchId, match_number: match.number },
   });
+
+  // DT de la fecha
+  const { data: topDT } = await supabase
+    .from("dt_scores")
+    .select("dt_member_id, points, dt:group_members!dt_scores_dt_member_id_fkey(display_name)")
+    .eq("match_id", matchId)
+    .order("points", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (topDT) {
+    const dt = topDT.dt as unknown as { display_name: string } | null;
+    if (dt) {
+      await crearNoticiaAuto({
+        groupId: membership.group_id,
+        title: `🏆 DT de la Fecha ${match.number}: ${dt.display_name}`,
+        body: `Sumó ${topDT.points} puntos con su equipo.`,
+        payload: { match_id: matchId, member_id: topDT.dt_member_id },
+      });
+    }
+  }
+
+  // Equipo Ideal
+  const { data: topJugadores } = await supabase
+    .from("player_scores")
+    .select("member_id, points, jugador:group_members!player_scores_member_id_fkey(display_name)")
+    .eq("match_id", matchId)
+    .gt("points", 0)
+    .order("points", { ascending: false })
+    .limit(5);
+
+  if (topJugadores && topJugadores.length > 0) {
+    const nombres = topJugadores
+      .map((j) => {
+        const m = j.jugador as unknown as { display_name: string } | null;
+        return m?.display_name;
+      })
+      .filter((x): x is string => !!x)
+      .join(", ");
+
+    await crearNoticiaAuto({
+      groupId: membership.group_id,
+      title: `⭐ Equipo Ideal de la Fecha ${match.number}`,
+      body: nombres,
+      payload: { match_id: matchId },
+    });
+  }
 
   revalidatePath("/config/resultados");
   revalidatePath("/inicio");
