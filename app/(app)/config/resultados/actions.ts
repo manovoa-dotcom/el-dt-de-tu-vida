@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { crearNoticiaAuto } from "@/lib/news";
+import { getFraseNoUsada } from "@/lib/phrases";
 
 export type ActionResult = {
   ok: boolean;
@@ -118,13 +119,18 @@ export async function guardarResultados(
     .limit(1)
     .maybeSingle();
 
-  if (topDT) {
+   if (topDT) {
     const dt = topDT.dt as unknown as { display_name: string } | null;
     if (dt) {
+      const frase = await getFraseNoUsada("dt_fecha");
+      const cuerpo = frase
+        ? `El DT ${dt.display_name} declaró ante la prensa:\n\n"${frase}"`
+        : `Sumó ${topDT.points} puntos con su equipo.`;
+
       await crearNoticiaAuto({
         groupId: membership.group_id,
         title: `🏆 DT de la Fecha ${match.number}: ${dt.display_name}`,
-        body: `Sumó ${topDT.points} puntos con su equipo.`,
+        body: cuerpo,
         payload: { match_id: matchId, member_id: topDT.dt_member_id },
       });
     }
