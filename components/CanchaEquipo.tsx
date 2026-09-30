@@ -1,84 +1,86 @@
 "use client";
 
-import Avatar from "./Avatar";
+import Carta from "./Carta";
 
 export type JugadorCancha = {
   member_id: string;
   alias: string;
   photo_url: string | null;
   points: number;
+  posicion?: number | null;
+  estrellas?: number;
 };
 
 const POSICIONES: Record<number, [number, number][]> = {
   5: [
-    [50, 15],
-    [15, 60],
-    [38, 60],
-    [62, 60],
-    [85, 60],
+    [50, 22],
+    [15, 55],
+    [38, 55],
+    [62, 55],
+    [85, 55],
   ],
   6: [
-    [50, 15],
-    [30, 45],
-    [70, 45],
-    [20, 78],
-    [50, 78],
-    [80, 78],
+    [50, 18],
+    [30, 48],
+    [70, 48],
+    [20, 82],
+    [50, 82],
+    [80, 82],
   ],
   7: [
-    [50, 15],
+    [50, 18],
     [20, 48],
     [50, 48],
     [80, 48],
-    [20, 80],
-    [50, 80],
-    [80, 80],
+    [20, 82],
+    [50, 82],
+    [80, 82],
   ],
   8: [
-    [50, 14],
-    [20, 44],
-    [50, 44],
-    [80, 44],
-    [13, 78],
-    [38, 78],
-    [62, 78],
-    [87, 78],
+    [50, 15],
+    [20, 45],
+    [50, 45],
+    [80, 45],
+    [13, 80],
+    [38, 80],
+    [62, 80],
+    [87, 80],
   ],
   9: [
-    [50, 14],
-    [13, 42],
-    [38, 42],
-    [62, 42],
-    [87, 42],
-    [13, 78],
-    [38, 78],
-    [62, 78],
-    [87, 78],
+    [50, 15],
+    [13, 45],
+    [38, 45],
+    [62, 45],
+    [87, 45],
+    [13, 80],
+    [38, 80],
+    [62, 80],
+    [87, 80],
   ],
   10: [
-    [50, 12],
-    [20, 38],
-    [50, 38],
-    [80, 38],
-    [20, 65],
-    [50, 65],
-    [80, 65],
-    [20, 90],
-    [50, 90],
-    [80, 90],
+    [50, 14],
+    [20, 40],
+    [50, 40],
+    [80, 40],
+    [20, 68],
+    [50, 68],
+    [80, 68],
+    [20, 94],
+    [50, 94],
+    [80, 94],
   ],
   11: [
-    [50, 12],
-    [13, 36],
-    [38, 36],
-    [62, 36],
-    [87, 36],
-    [20, 63],
-    [50, 63],
-    [80, 63],
-    [20, 90],
-    [50, 90],
-    [80, 90],
+    [50, 14],
+    [13, 38],
+    [38, 38],
+    [62, 38],
+    [87, 38],
+    [20, 66],
+    [50, 66],
+    [80, 66],
+    [20, 94],
+    [50, 94],
+    [80, 94],
   ],
 };
 
@@ -91,7 +93,7 @@ type Props = {
 export default function CanchaEquipo({
   titulares,
   suplente,
-  maxWidth = 340,
+  maxWidth = 460,
 }: Props) {
   const n = titulares.length;
   const posiciones = POSICIONES[n] ?? generarPosiciones(n);
@@ -107,6 +109,7 @@ export default function CanchaEquipo({
           border: "2px solid rgba(255,255,255,0.4)",
         }}
       >
+        {/* Círculo central */}
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
@@ -115,10 +118,12 @@ export default function CanchaEquipo({
             border: "2.5px solid rgba(255,255,255,0.4)",
           }}
         />
+        {/* Línea media */}
         <div
           className="absolute left-0 right-0 top-1/2"
           style={{ height: 2.5, background: "rgba(255,255,255,0.4)" }}
         />
+        {/* Área arriba */}
         <div
           className="absolute left-1/2 -translate-x-1/2"
           style={{
@@ -132,6 +137,7 @@ export default function CanchaEquipo({
             borderBottomRightRadius: 10,
           }}
         />
+        {/* Área abajo */}
         <div
           className="absolute left-1/2 -translate-x-1/2"
           style={{
@@ -146,44 +152,27 @@ export default function CanchaEquipo({
           }}
         />
 
+        {/* Jugadores */}
         {titulares.map((j, idx) => {
           const [x, y] = posiciones[idx] ?? [50, 50];
           return (
             <div
               key={j.member_id}
-              className="absolute flex flex-col items-center"
+              className="absolute"
               style={{
                 left: `${x}%`,
                 top: `${y}%`,
                 transform: "translate(-50%, -50%)",
-                maxWidth: 90,
               }}
             >
-              <Avatar
+              <Carta
                 alias={j.alias}
                 photoUrl={j.photo_url}
-                size={40}
-                ringColor="var(--gold)"
+                puntos={j.points}
+                posicion={j.posicion}
+                estrellas={j.estrellas ?? 0}
+                size="xs"
               />
-              <div
-                className="mt-0.5 truncate text-center text-[10px] font-bold"
-                style={{
-                  color: "#fff",
-                  textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-                  maxWidth: 80,
-                }}
-              >
-                {j.alias}
-              </div>
-              <div
-                className="bebas text-sm leading-none"
-                style={{
-                  color: "var(--gold)",
-                  textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-                }}
-              >
-                {j.points}
-              </div>
             </div>
           );
         })}
@@ -193,8 +182,8 @@ export default function CanchaEquipo({
         <div
           className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2"
           style={{
-            background: "var(--g1)",
-            border: "1px solid rgba(242,182,50,0.3)",
+            background: "#0a2818",
+            border: "1.5px solid rgba(242,182,50,0.3)",
           }}
         >
           <div
@@ -203,19 +192,14 @@ export default function CanchaEquipo({
           >
             SUPLENTE
           </div>
-          <Avatar
+          <Carta
             alias={suplente.alias}
             photoUrl={suplente.photo_url}
-            size={32}
+            puntos={suplente.points}
+            posicion={suplente.posicion}
+            estrellas={suplente.estrellas ?? 0}
+            size="xs"
           />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">
-              {suplente.alias}
-            </div>
-          </div>
-          <div className="bebas text-lg" style={{ color: "var(--dim)" }}>
-            {suplente.points}
-          </div>
         </div>
       )}
     </div>
@@ -224,7 +208,7 @@ export default function CanchaEquipo({
 
 function generarPosiciones(n: number): [number, number][] {
   const res: [number, number][] = [];
-  res.push([50, 15]);
+  res.push([50, 20]);
   const resto = n - 1;
   const filas = Math.min(3, Math.ceil(resto / 4));
   const perFila = Math.ceil(resto / filas);
@@ -232,7 +216,7 @@ function generarPosiciones(n: number): [number, number][] {
     const fila = Math.floor(i / perFila);
     const idx = i % perFila;
     const cantFila = Math.min(perFila, resto - fila * perFila);
-    const y = 42 + fila * 25;
+    const y = 48 + fila * 24;
     const x = (100 / (cantFila + 1)) * (idx + 1);
     res.push([x, y]);
   }

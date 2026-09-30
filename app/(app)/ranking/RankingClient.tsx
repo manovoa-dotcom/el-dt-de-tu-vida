@@ -208,57 +208,19 @@ export default function RankingClient({
       )}
 
       {equipoIdealAnio.length > 0 ? (
-        <div className="mx-auto mt-3 px-3" style={{ maxWidth: 500 }}>
-          <div
-            className="relative w-full overflow-hidden rounded-2xl"
-            style={{
-              aspectRatio: "3 / 4",
-              background:
-                "repeating-linear-gradient(180deg, #1f6b3a 0 10%, #247a43 10% 20%)",
-              border: "2px solid rgba(255,255,255,0.4)",
-            }}
-          >
-            <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{
-                width: "30%",
-                aspectRatio: "1",
-                border: "2.5px solid rgba(255,255,255,0.4)",
-              }}
-            />
-            <div
-              className="absolute left-0 right-0 top-1/2"
-              style={{ height: 2.5, background: "rgba(255,255,255,0.4)" }}
-            />
-            {equipoIdealAnio.map((j, idx) => {
-              const pos =
-                posicionesIdeal(equipoIdealAnio.length)[idx] ?? [50, 50];
-              const posicion =
+        <div className="mx-auto mt-3 px-3">
+          <CanchaEquipo
+            titulares={equipoIdealAnio.map((j) => ({
+              member_id: j.member_id,
+              alias: j.alias,
+              photo_url: j.photo_url,
+              points: j.total_points,
+              posicion:
                 rankingJugadores.findIndex((x) => x.member_id === j.member_id) +
-                1;
-              return (
-                <div
-                  key={j.member_id}
-                  className="absolute"
-                  style={{
-                    left: `${pos[0]}%`,
-                    top: `${pos[1]}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  <Carta
-                    alias={j.alias}
-                    photoUrl={j.photo_url}
-                    puntos={j.total_points}
-                    posicion={posicion}
-                    estrellas={j.estrellas}
-                    size="sm"
-                    onClick={() => setFichaJugador(j.member_id)}
-                  />
-                </div>
-              );
-            })}
-          </div>
+                1,
+              estrellas: j.estrellas,
+            }))}
+          />
         </div>
       ) : (
         <div
@@ -819,80 +781,4 @@ function FechaHistorial({
       )}
     </div>
   );
-}
-
-function posicionesIdeal(n: number): [number, number][] {
-  const map: Record<number, [number, number][]> = {
-    5: [
-      [50, 18],
-      [20, 50],
-      [40, 50],
-      [60, 50],
-      [80, 50],
-    ],
-    6: [
-      [30, 20],
-      [70, 20],
-      [30, 55],
-      [70, 55],
-      [30, 85],
-      [70, 85],
-    ],
-    7: [
-      [50, 15],
-      [20, 45],
-      [50, 45],
-      [80, 45],
-      [20, 80],
-      [50, 80],
-      [80, 80],
-    ],
-    8: [
-      [25, 15],
-      [75, 15],
-      [20, 45],
-      [50, 45],
-      [80, 45],
-      [25, 82],
-      [50, 82],
-      [75, 82],
-    ],
-    9: [
-      [50, 12],
-      [20, 38],
-      [50, 38],
-      [80, 38],
-      [20, 68],
-      [50, 68],
-      [80, 68],
-      [35, 92],
-      [65, 92],
-    ],
-    10: [
-      [50, 10],
-      [20, 35],
-      [50, 35],
-      [80, 35],
-      [20, 60],
-      [50, 60],
-      [80, 60],
-      [20, 88],
-      [50, 88],
-      [80, 88],
-    ],
-    11: [
-      [50, 10],
-      [15, 35],
-      [38, 35],
-      [62, 35],
-      [85, 35],
-      [20, 62],
-      [50, 62],
-      [80, 62],
-      [20, 90],
-      [50, 90],
-      [80, 90],
-    ],
-  };
-  return map[n] ?? [[50, 50]];
 }
