@@ -6,7 +6,12 @@ import BotonAnotarse from "./BotonAnotarse";
 import NoticiaForm from "./NoticiaForm";
 import NoticiaCard from "./NoticiaCard";
 import MarcarComoLeidas from "./MarcarComoLeidas";
-import { formatearFechaAR, formatearHoraAR, DIAS_SEMANA, MESES_CORTOS } from "@/lib/fecha";
+import {
+  formatearFechaAR,
+  formatearHoraAR,
+  DIAS_SEMANA,
+  MESES_CORTOS,
+} from "@/lib/fecha";
 
 export default async function InicioPage() {
   const supabase = await createClient();
@@ -43,7 +48,6 @@ export default async function InicioPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Próximo partido
   const { data: proximo } = await supabase
     .from("matches")
     .select("id, number, kickoff_at, place, cupo, status, baja_closes_at")
@@ -84,7 +88,6 @@ export default async function InicioPage() {
     miEstado = miAsistencia?.status ?? null;
   }
 
-  // Noticias
   const { data: noticiasRaw } = await supabase
     .from("news")
     .select("id, kind, title, body, created_at, author_id")
@@ -92,7 +95,6 @@ export default async function InicioPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  // Autores
   const authorIds = (noticiasRaw ?? [])
     .map((n) => n.author_id)
     .filter((x): x is string => !!x);
@@ -108,7 +110,6 @@ export default async function InicioPage() {
     );
   }
 
-  // Reacciones
   const newsIds = (noticiasRaw ?? []).map((n) => n.id);
   let reaccionesRaw: { news_id: string; member_id: string; emoji: string }[] = [];
   if (newsIds.length > 0) {
@@ -160,13 +161,13 @@ export default async function InicioPage() {
   });
 
   const isAdmin = membership.role === "admin";
-  
-  const bajaCerrada = proximo ? new Date() > new Date(proximo.baja_closes_at) : false;
+  const bajaCerrada = proximo
+    ? new Date() > new Date(proximo.baja_closes_at)
+    : false;
   const completo = proximo ? anotadosCount >= proximo.cupo : false;
 
   return (
     <div>
-      {/* Header */}
       <header className="px-4 pb-2 pt-6">
         <div className="flex items-start justify-between gap-3">
           <Link
@@ -199,8 +200,7 @@ export default async function InicioPage() {
         </Link>
       </header>
 
-      {/* Próximo partido */}
-      {proximo && kickoff ? (
+      {proximo ? (
         <div
           className="mx-3 mt-3 rounded-2xl p-4"
           style={{
@@ -250,7 +250,10 @@ export default async function InicioPage() {
           />
 
           {espera > 0 && (
-            <div className="mt-2 text-center text-[10px]" style={{ color: "var(--dim)" }}>
+            <div
+              className="mt-2 text-center text-[10px]"
+              style={{ color: "var(--dim)" }}
+            >
               Lista de espera: {espera}
             </div>
           )}
@@ -286,7 +289,6 @@ export default async function InicioPage() {
         </div>
       )}
 
-      {/* Masthead */}
       <div className="bebas mt-6 px-4 text-2xl tracking-wider">
         EL DT DE TU VIDA INFORMA
       </div>
@@ -294,10 +296,8 @@ export default async function InicioPage() {
         Novedades del grupo
       </p>
 
-      {/* Formulario para publicar */}
       <NoticiaForm />
 
-      {/* Noticias */}
       {noticias.length > 0 ? (
         noticias.map((n) => (
           <NoticiaCard
@@ -321,9 +321,8 @@ export default async function InicioPage() {
         </div>
       )}
 
- <div className="h-8" />
+      <div className="h-8" />
 
-      {/* Marca las noticias como leídas al entrar */}
       <MarcarComoLeidas />
     </div>
   );

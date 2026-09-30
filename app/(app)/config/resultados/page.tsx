@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import ResultadosClient from "./ResultadosClient";
-import { formatearFechaAR, formatearHoraAR, DIAS_SEMANA, MESES_LARGOS } from "@/lib/fecha";
-
-
+import {
+  formatearFechaAR,
+  DIAS_SEMANA,
+  MESES_LARGOS,
+} from "@/lib/fecha";
 
 export default async function CargarResultadosPage({
   searchParams,
@@ -36,7 +38,6 @@ export default async function CargarResultadosPage({
     );
   }
 
-  // Temporada activa
   const { data: season } = await supabase
     .from("seasons")
     .select("id")
@@ -55,7 +56,6 @@ export default async function CargarResultadosPage({
     );
   }
 
-  // Todas las fechas de la temporada
   const { data: todosPartidos } = await supabase
     .from("matches")
     .select("id, number, kickoff_at, place, cupo, status")
@@ -68,7 +68,11 @@ export default async function CargarResultadosPage({
     return (
       <div>
         <header className="px-4 pb-2 pt-6">
-          <Link href="/config" className="text-xs no-underline" style={{ color: "var(--dim)" }}>
+          <Link
+            href="/config"
+            className="text-xs no-underline"
+            style={{ color: "var(--dim)" }}
+          >
             ← Config
           </Link>
           <h1 className="bebas mt-2 text-3xl">Cargar resultados</h1>
@@ -79,21 +83,14 @@ export default async function CargarResultadosPage({
         >
           <div className="text-4xl">📝</div>
           <p className="bebas mt-3 text-xl">Sin partidos</p>
-           <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-          {DIAS_SEMANA[formatearFechaAR(match.kickoff_at).diaSemana].toLowerCase()}{" "}
-          {formatearFechaAR(match.kickoff_at).dia} de{" "}
-          {MESES_LARGOS[formatearFechaAR(match.kickoff_at).mes]}
-          {match.place ? ` · ${match.place}` : ""}
-        </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+            Cargá el primer partido desde Config → Próximo partido.
+          </p>
         </div>
       </div>
     );
   }
 
-  // Elegir qué partido mostrar:
-  // 1. Si viene ?fecha=N en la URL, ese.
-  // 2. Si no, la primera "programada" con kickoff pasado.
-  // 3. Si no, la última jugada.
   const params = await searchParams;
   const fechaQuery = params.fecha ? parseInt(params.fecha, 10) : null;
 
@@ -125,7 +122,11 @@ export default async function CargarResultadosPage({
     return (
       <div>
         <header className="px-4 pb-2 pt-6">
-          <Link href="/config" className="text-xs no-underline" style={{ color: "var(--dim)" }}>
+          <Link
+            href="/config"
+            className="text-xs no-underline"
+            style={{ color: "var(--dim)" }}
+          >
             ← Config
           </Link>
           <h1 className="bebas mt-2 text-3xl">Cargar resultados</h1>
@@ -137,7 +138,8 @@ export default async function CargarResultadosPage({
           <div className="text-4xl">📝</div>
           <p className="bebas mt-3 text-xl">Sin partidos pendientes</p>
           <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-            Cuando termine el próximo partido, va a aparecer acá para cargar los resultados.
+            Cuando termine el próximo partido, va a aparecer acá para cargar los
+            resultados.
           </p>
         </div>
       </div>
@@ -206,14 +208,13 @@ export default async function CargarResultadosPage({
 
   const existingFaltas = (existingCards ?? []).map((c) => c.member_id);
 
- 
-
-  // Lista simplificada para el selector
   const partidosSelector = partidos.map((p) => ({
     number: p.number,
     status: p.status,
     kickoff_at: p.kickoff_at,
   }));
+
+  const fechaInfo = formatearFechaAR(match.kickoff_at);
 
   return (
     <div>
@@ -229,12 +230,14 @@ export default async function CargarResultadosPage({
           {isEditing ? `Editar Fecha ${match.number}` : `Cargar Fecha ${match.number}`}
         </h1>
         <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-          {DIAS[kickoff.getDay()]} {kickoff.getDate()} de {MESES[kickoff.getMonth()]}
+          {DIAS_SEMANA[fechaInfo.diaSemana].toLowerCase()} {fechaInfo.dia} de{" "}
+          {MESES_LARGOS[fechaInfo.mes]}
           {match.place ? ` · ${match.place}` : ""}
         </p>
         {isEditing && (
           <p className="mt-2 text-xs" style={{ color: "var(--gold)" }}>
-            ✏️ Estás editando una fecha ya cargada. Al guardar se recalculan los puntajes.
+            ✏️ Estás editando una fecha ya cargada. Al guardar se recalculan los
+            puntajes.
           </p>
         )}
       </header>
