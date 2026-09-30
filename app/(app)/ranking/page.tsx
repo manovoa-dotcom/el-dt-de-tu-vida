@@ -47,6 +47,14 @@ export type ResultadoFechaJugador = {
   items: PuntosItemJugador[];
 };
 
+export type TarjetaDetalle = {
+  id: string;
+  match_id: string;
+  match_number: number;
+  annulled: boolean;
+  annul_reason: string | null;
+};
+
 export type JugadorRanking = {
   member_id: string;
   alias: string;
@@ -58,6 +66,7 @@ export type JugadorRanking = {
   tarjetas: number;
   por_item: Record<string, number>;
   por_fecha: ResultadoFechaJugador[];
+  tarjetas_detalle: TarjetaDetalle[];
 };
 
 export type ItemInfo = {
@@ -119,14 +128,21 @@ export default async function RankingPage() {
 
   const equipoIdealAnioSize = grupo?.equipo_ideal_anio_size ?? 5;
 
-  const { data: partidos } = await supabase
+  // Partidos jugados/cerrados (con cupo)
+  const { data: partidosFull } = await supabase
     .from("matches")
-    .select("id, number, kickoff_at")
+    .select("id, number, cupo")
     .eq("season_id", season.id)
     .in("status", ["jugada", "cerrada"])
     .order("number", { ascending: true });
 
-  const partidosIds = (partidos ?? []).map((p) => p.id);
+  const partidosIds = (partidosFull ?? []).map((p) => p.id);
+  const partidosMap = new Map(
+    (partidosFull ?? []).map((p) => [p.id, p])
+  );
+  const cupoPorMatch = new Map(
+    (partidosFull ?? []).map((p) => [p.id, p.cupo])
+  );
 
   const { data: items } = await supabase
     .from("items")
@@ -180,14 +196,32 @@ export default async function RankingPage() {
   let dtScores: { dt_member_id: string; points: number; match_id: string }[] = [];
   let playerScores: { member_id: string; points: number; match_id: string }[] = [];
   let itemWins: { member_id: string; item_id: string; match_id: string }[] = [];
-  let cardsRaw: { member_id: string; match_id: string }[] = [];
+  let cardsRaw: {
+    id: string;
+    member_id: string;
+    match_id: string;
+    annulled: boolean;
+    annul_reason: string | null;
+  }[] = [];
 
   if (partidosIds.length > 0) {
     const [a, b, c, d] = await Promise.all([
-      supabase.from("dt_scores").select("dt_member_id, points, match_id").in("match_id", partidosIds),
-      supabase.from("player_scores").select("member_id, points, match_id").in("match_id", partidosIds),
-      supabase.from("match_item_wins").select("member_id, item_id, match_id").in("match_id", partidosIds),
-      supabase.from("cards").select("member_id, match_id").in("match_id", partidosIds).eq("annulled", false),
+      supabase
+        .from("dt_scores")
+        .select("dt_member_id, points, match_id")
+        .in("match_id", partidosIds),
+      supabase
+        .from("player_scores")
+        .select("member_id, points, match_id")
+        .in("match_id", partidosIds),
+      supabase
+        .from("match_item_wins")
+        .select("member_id, item_id, match_id")
+        .in("match_id", partidosIds),
+      supabase
+        .from("cards")
+        .select("id, member_id, match_id, annulled, annul_reason")
+        .in("match_id", partidosIds),
     ]);
     dtScores = a.data ?? [];
     playerScores = b.data ?? [];
@@ -195,8 +229,7 @@ export default async function RankingPage() {
     cardsRaw = d.data ?? [];
   }
 
-    // ─── Equipos (fantasy_teams + picks) por fecha ───
-  // Hacemos 2 queries separadas para evitar problemas con el join anidado
+  // ─── Equipos (fantasy_teams + picks) por fecha ───
   let fantasyData: {
     match_id: string;
     dt_member_id: string;
@@ -242,7 +275,6 @@ export default async function RankingPage() {
   }
 
   // ─── Estrellas DT: cuántas veces fue DT de la fecha ───
-  // Calculamos por fecha quién fue el que más puntos sacó.
   const maxPointsPorFecha = new Map<string, number>();
   for (const s of dtScores) {
     const actual = maxPointsPorFecha.get(s.match_id) ?? -Infinity;
@@ -251,19 +283,14 @@ export default async function RankingPage() {
   const estrellasDTMap = new Map<string, number>();
   for (const s of dtScores) {
     if (s.points > 0 && s.points === maxPointsPorFecha.get(s.match_id)) {
-      estrellasDTMap.set(s.dt_member_id, (estrellasDTMap.get(s.dt_member_id) ?? 0) + 1);
+      estrellasDTMap.set(
+        s.dt_member_id,
+        (estrellasDTMap.get(s.dt_member_id) ?? 0) + 1
+      );
     }
   }
 
   // ─── Estrellas Jugador: cuántas veces entró al Equipo Ideal de la fecha ───
-  // Se calcula por fecha: top (cupo/2) jugadores con más puntos
-  const { data: partidosFull } = await supabase
-    .from("matches")
-    .select("id, number, cupo")
-    .eq("season_id", season.id)
-    .in("status", ["jugada", "cerrada"]);
-  const cupoPorMatch = new Map((partidosFull ?? []).map((p) => [p.id, p.cupo]));
-
   const scoresPorFecha = new Map<string, { member_id: string; points: number }[]>();
   for (const s of playerScores) {
     if (!scoresPorFecha.has(s.match_id)) scoresPorFecha.set(s.match_id, []);
@@ -278,7 +305,10 @@ export default async function RankingPage() {
     const top = ordenados.slice(0, limite);
     for (const t of top) {
       if (t.points > 0) {
-        estrellasJugadorMap.set(t.member_id, (estrellasJugadorMap.get(t.member_id) ?? 0) + 1);
+        estrellasJugadorMap.set(
+          t.member_id,
+          (estrellasJugadorMap.get(t.member_id) ?? 0) + 1
+        );
       }
     }
   }
@@ -299,13 +329,14 @@ export default async function RankingPage() {
   }
 
   for (const f of fantasyData) {
-    const partido = (partidosFull ?? []).find((p) => p.id === f.match_id);
+    const partido = partidosMap.get(f.match_id);
     if (!partido) continue;
 
     const puntosMap = scoresJugadorPorMatch.get(f.match_id) ?? new Map();
-    const dtPuntos = dtScores.find(
-      (d) => d.match_id === f.match_id && d.dt_member_id === f.dt_member_id
-    )?.points ?? 0;
+    const dtPuntos =
+      dtScores.find(
+        (d) => d.match_id === f.match_id && d.dt_member_id === f.dt_member_id
+      )?.points ?? 0;
 
     const titulares: JugadorEnFecha[] = f.fantasy_picks
       .filter((p) => p.slot === "titular")
@@ -343,7 +374,6 @@ export default async function RankingPage() {
     });
   }
 
-  // Ordenar equipos por fecha
   for (const arr of equiposPorDT.values()) {
     arr.sort((a, b) => a.match_number - b.match_number);
   }
@@ -394,13 +424,24 @@ export default async function RankingPage() {
   }
 
   const tarjetasMap = new Map<string, number>();
+  const tarjetasDetalleMap = new Map<string, TarjetaDetalle[]>();
   for (const c of cardsRaw) {
-    tarjetasMap.set(c.member_id, (tarjetasMap.get(c.member_id) ?? 0) + 1);
+    if (!c.annulled) {
+      tarjetasMap.set(c.member_id, (tarjetasMap.get(c.member_id) ?? 0) + 1);
+    }
+    const p = partidosMap.get(c.match_id);
+    if (!p) continue;
+    if (!tarjetasDetalleMap.has(c.member_id)) {
+      tarjetasDetalleMap.set(c.member_id, []);
+    }
+    tarjetasDetalleMap.get(c.member_id)!.push({
+      id: c.id,
+      match_id: c.match_id,
+      match_number: p.number,
+      annulled: c.annulled,
+      annul_reason: c.annul_reason,
+    });
   }
-
-  const partidosMap = new Map(
-    (partidosFull ?? []).map((p) => [p.id, p])
-  );
 
   const rankingJugadores: JugadorRanking[] = (miembros ?? [])
     .map((m) => {
@@ -420,6 +461,10 @@ export default async function RankingPage() {
       }
       fechas.sort((a, b) => a.match_number - b.match_number);
 
+      const tarjetasDetalle = (tarjetasDetalleMap.get(m.id) ?? []).sort(
+        (a, b) => b.match_number - a.match_number
+      );
+
       return {
         member_id: m.id,
         alias: info?.alias ?? "—",
@@ -431,6 +476,7 @@ export default async function RankingPage() {
         tarjetas: tarjetasMap.get(m.id) ?? 0,
         por_item: jugadorPorItem.get(m.id) ?? {},
         por_fecha: fechas,
+        tarjetas_detalle: tarjetasDetalle,
       };
     })
     .sort((a, b) => {
@@ -439,12 +485,10 @@ export default async function RankingPage() {
       return a.alias.localeCompare(b.alias);
     });
 
-  // Equipo Ideal del Año
   const equipoIdealAnio = rankingJugadores
     .filter((j) => j.total_points > 0)
     .slice(0, equipoIdealAnioSize);
 
-  // DT del año (el que más puntos tiene)
   const dtDelAnio = rankingDTBase[0] ?? null;
 
   return (

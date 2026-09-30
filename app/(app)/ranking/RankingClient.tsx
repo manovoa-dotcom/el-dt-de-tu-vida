@@ -1,5 +1,7 @@
 "use client";
-
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { anularTarjeta, rehabilitarTarjeta } from "./actions";
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import Carta from "@/components/Carta";
@@ -10,6 +12,7 @@ import type {
   ItemInfo,
   EquipoDTFecha,
   ResultadoFechaJugador,
+ TarjetaDetalle,
 } from "./page";
 
 type Props = {
@@ -601,9 +604,16 @@ function FichaJugador({
 }) {
   const [verHistorial, setVerHistorial] = useState(false);
   const [fechaAbierta, setFechaAbierta] = useState<string | null>(null);
-
+  const [verTarjetas, setVerTarjetas] = useState(false);
   const itemsLogrados = items.filter((it) => (jugador.por_item[it.key] ?? 0) > 0);
 
+  {verTarjetas && jugador.tarjetas_detalle.length > 0 && (
+        <div className="mt-3">
+          {jugador.tarjetas_detalle.map((t) => (
+            <FilaTarjeta key={t.id} tarjeta={t} />
+          ))}
+        </div>
+      )}
   return (
     <div className="mx-3 mt-3 pb-6">
       <button
@@ -626,16 +636,20 @@ function FichaJugador({
         />
       </div>
 
-      {jugador.tarjetas > 0 && (
-        <div className="mt-3 flex justify-center">
-          <div
-            className="rounded-full px-3 py-1 text-[11px] font-bold"
-            style={{ background: "rgba(226,59,77,0.15)", color: "var(--red)" }}
+            {jugador.tarjetas_detalle.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVerTarjetas((v) => !v)}
+            className="rounded-xl border px-4 py-2 text-xs font-bold transition"
+            style={{
+              borderColor: "var(--red)",
+              color: "var(--red)",
+              background: verTarjetas ? "rgba(226,59,77,0.15)" : "transparent",
+            }}
           >
-            🟥 {jugador.tarjetas} tarjeta
-            {jugador.tarjetas !== 1 ? "s" : ""} roja
-            {jugador.tarjetas !== 1 ? "s" : ""}
-          </div>
+            🟥 Tarjetas rojas ({jugador.tarjetas_detalle.length})
+          </button>
         </div>
       )}
 
@@ -777,6 +791,135 @@ function FechaHistorial({
               </span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function FilaTarjeta({
+  tarjeta,
+}: {
+  tarjeta: TarjetaDetalle;
+}) {
+  const [mostrarMotivo, setMostrarMotivo] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const [toast, setToast] = useState<string | null>(null);
+
+  function mostrarToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  function ejecutarAnular() {
+    if (motivo.trim().length < 3) {
+      mostrarToast("Poné un motivo");
+      return;
+    }
+    startTransition(async () => {
+      const res = await anularTarjeta(tarjeta.id, motivo);
+      mostrarToast(res.ok ? "Tarjeta anulada" : res.error ?? "Error");
+      setMostrarMotivo(false);
+      setMotivo("");
+      router.refresh();
+    });
+  }
+
+  function ejecutarRehabilitar() {
+    startTransition(async () => {
+      const res = await rehabilitarTarjeta(tarjeta.id);
+      mostrarToast(res.ok ? "Tarjeta rehabilitada" : res.error ?? "Error");
+      router.refresh();
+    });
+  }
+
+  return (
+    <div
+      className="mt-2 rounded-xl p-3"
+      style={{
+        background: tarjeta.annulled ? "rgba(255,255,255,0.03)" : "rgba(226,59,77,0.08)",
+        border: `1px solid ${tarjeta.annulled ? "rgba(255,255,255,0.06)" : "rgba(226,59,77,0.25)"}`,
+        opacity: tarjeta.annulled ? 0.7 : 1,
+      }}
+    >
+      {toast && (
+        <div
+          className="mb-2 rounded-lg px-3 py-1.5 text-center text-[11px] font-bold"
+          style={{ background: "var(--gold)", color: "#12261c" }}
+        >
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🟥</span>
+            <span className="text-sm font-semibold">Fecha {tarjeta.match_number}</span>
+            {tarjeta.annulled && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-bold"
+                style={{ background: "rgba(255,255,255,0.1)", color: "var(--dim)" }}
+              >
+                ANULADA
+              </span>
+            )}
+          </div>
+          {tarjeta.annulled && tarjeta.annul_reason && (
+            <div className="mt-0.5 text-[10px] italic" style={{ color: "var(--dim)" }}>
+              Motivo: {tarjeta.annul_reason}
+            </div>
+          )}
+        </div>
+
+        {!tarjeta.annulled ? (
+          <button
+            type="button"
+            onClick={() => setMostrarMotivo((v) => !v)}
+            disabled={isPending}
+            className="rounded-lg border px-2 py-1 text-[10px] font-bold transition disabled:opacity-50"
+            style={{ borderColor: "var(--dim)", color: "var(--dim)" }}
+          >
+            Anular
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={ejecutarRehabilitar}
+            disabled={isPending}
+            className="rounded-lg border px-2 py-1 text-[10px] font-bold transition disabled:opacity-50"
+            style={{ borderColor: "var(--gold)", color: "var(--gold)" }}
+          >
+            Rehabilitar
+          </button>
+        )}
+      </div>
+
+      {mostrarMotivo && !tarjeta.annulled && (
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Motivo de la anulación"
+            maxLength={100}
+            className="flex-1 rounded-lg px-2 py-1.5 text-[11px] outline-none"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "var(--tx)",
+            }}
+          />
+          <button
+            type="button"
+            onClick={ejecutarAnular}
+            disabled={isPending}
+            className="rounded-lg px-3 py-1.5 text-[10px] font-bold transition disabled:opacity-50"
+            style={{ background: "var(--red)", color: "#fff" }}
+          >
+            {isPending ? "..." : "OK"}
+          </button>
         </div>
       )}
     </div>
