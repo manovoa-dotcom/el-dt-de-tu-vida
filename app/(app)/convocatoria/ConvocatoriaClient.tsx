@@ -27,6 +27,7 @@ type Props = {
   lugar: string | null;
   miEquipo: MiPick[];
   equiposBloqueados: boolean;
+  convocatoriaAunNoAbierta: boolean;
   presupuesto: number | null;
 };
 
@@ -45,8 +46,10 @@ export default function ConvocatoriaClient({
   lugar,
   miEquipo,
   equiposBloqueados,
+  convocatoriaAunNoAbierta,
   presupuesto,
 }: Props) {
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
@@ -335,10 +338,12 @@ export default function ConvocatoriaClient({
 
   // Texto del indicador de guardado
   let textoEstado = "";
-  if (estadoGuardado === "guardando") textoEstado = "Guardando...";
+if (convocatoriaAunNoAbierta) textoEstado = "🔒 Convocatoria no abierta";
+else if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
+  else if (estadoGuardado === "guardando") textoEstado = "Guardando...";
   else if (estadoGuardado === "guardado") textoEstado = "✓ Guardado";
   else if (estadoGuardado === "error") textoEstado = `⚠ ${errorGuardado}`;
-  else if (!equipoCompleto && !equiposBloqueados) {
+  else if (!equipoCompleto) {
     const faltanTit = titularesEsperados - titulares.length;
     if (faltanTit > 0)
       textoEstado = `Faltan ${faltanTit} titular${faltanTit !== 1 ? "es" : ""}`;

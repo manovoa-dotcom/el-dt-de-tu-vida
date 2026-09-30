@@ -31,17 +31,27 @@ export async function guardarEquipo(
 
   if (!miembro) return { ok: false, error: "No estás activo en el grupo" };
 
-  const { data: match } = await supabase
+    const { data: match } = await supabase
     .from("matches")
-    .select("id, cupo, budget, teams_lock_at, group_id, status, season_id, number")
+    .select("id, cupo, budget, teams_lock_at, convocatoria_opens_at, group_id, status, season_id, number")
     .eq("id", matchId)
     .eq("group_id", miembro.group_id)
     .maybeSingle();
 
   if (!match) return { ok: false, error: "Partido no encontrado" };
-  if (match.status !== "programada") return { ok: false, error: "El partido no está abierto" };
-  if (new Date() > new Date(match.teams_lock_at)) {
-    return { ok: false, error: "Ya cerró el armado de equipos" };
+  if (match.status !== "programada") {
+    return { ok: false, error: "El partido no está abierto" };
+  }
+
+  const ahora = new Date();
+  const abre = new Date(match.convocatoria_opens_at);
+  const cierra = new Date(match.teams_lock_at);
+
+  if (ahora < abre) {
+    return { ok: false, error: "La convocatoria todavía no abrió" };
+  }
+  if (ahora >= cierra) {
+    return { ok: false, error: "El armado de equipos ya cerró" };
   }
 
   // Validar titulares y suplentes

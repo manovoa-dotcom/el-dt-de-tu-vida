@@ -45,10 +45,10 @@ export default async function ConvocatoriaPage() {
   }
 
   // Próximo partido
-  const { data: partido } = await supabase
+ const { data: partido } = await supabase
     .from("matches")
     .select(
-      "id, number, kickoff_at, place, cupo, budget, status, baja_closes_at, teams_lock_at, season_id"
+      "id, number, kickoff_at, place, cupo, budget, status, baja_closes_at, teams_lock_at, convocatoria_opens_at, season_id"
     )
     .eq("group_id", membership.group_id)
     .eq("status", "programada")
@@ -229,8 +229,14 @@ export default async function ConvocatoriaPage() {
   ).length;
 
   
+   const kickoff = new Date(partido.kickoff_at);
   const bajaCloses = new Date(partido.baja_closes_at);
-  const equiposBloqueados = new Date() > new Date(partido.teams_lock_at);
+
+  const ahora = new Date();
+  const abre = new Date(partido.convocatoria_opens_at);
+  const cierra = new Date(partido.teams_lock_at);
+  const equiposBloqueados = ahora < abre || ahora >= cierra;
+  const convocatoriaAunNoAbierta = ahora < abre;
 
   return (
     <div>
@@ -244,7 +250,7 @@ export default async function ConvocatoriaPage() {
         </p>
       </header>
 
-      <ConvocatoriaClient
+        <ConvocatoriaClient
         matchId={partido.id}
         cupo={partido.cupo}
         anotadosCount={anotadosCount}
@@ -256,6 +262,7 @@ export default async function ConvocatoriaPage() {
         lugar={partido.place}
         miEquipo={miEquipo}
         equiposBloqueados={equiposBloqueados}
+        convocatoriaAunNoAbierta={convocatoriaAunNoAbierta}
         presupuesto={partido.budget}
       />
 
