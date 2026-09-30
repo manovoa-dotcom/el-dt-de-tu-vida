@@ -110,7 +110,11 @@ export async function guardarResultados(
     payload: { match_id: matchId, match_number: match.number },
   });
 
-  // DT de la fecha
+    // ══════════════════════════════════════════════════════════════
+  // Noticias con frases de conferencia
+  // ══════════════════════════════════════════════════════════════
+
+  // ─── DT de la Fecha ───
   const { data: topDT } = await supabase
     .from("dt_scores")
     .select("dt_member_id, points")
@@ -139,6 +143,125 @@ export async function guardarResultados(
         payload: { match_id: matchId, member_id: topDT.dt_member_id },
       });
     }
+  }
+
+  // ─── DT que salió último ───
+  const { data: bottomDT } = await supabase
+    .from("dt_scores")
+    .select("dt_member_id, points")
+    .eq("match_id", matchId)
+    .order("points", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    bottomDT &&
+    topDT &&
+    bottomDT.dt_member_id !== topDT.dt_member_id
+  ) {
+    const { data: dtInfo } = await supabase
+      .from("group_members")
+      .select("display_name")
+      .eq("id", bottomDT.dt_member_id)
+      .maybeSingle();
+
+    if (dtInfo) {
+      const frase = await getFraseNoUsada("dt_ultimo");
+      const cuerpo = frase
+        ? `El DT ${dtInfo.display_name} declaró ante la prensa:\n\n"${frase}"`
+        : `Sumó ${bottomDT.points} puntos con su equipo.`;
+
+      await crearNoticiaAuto({
+        groupId: membership.group_id,
+        title: `😔 Último de la Fecha ${match.number}: ${dtInfo.display_name}`,
+        body: cuerpo,
+        payload: { match_id: matchId, member_id: bottomDT.dt_member_id },
+      });
+    }
+  }
+
+  // ─── Jugador del partido (el que más puntos sacó) ───
+  const { data: topJugador } = await supabase
+    .from("player_scores")
+    .select("member_id, points")
+    .eq("match_id", matchId)
+    .gt("points", 0)
+    .order("points", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (topJugador && topJugador.points > 0) {
+    const { data: jInfo } = await supabase
+      .from("group_members")
+      .select("display_name")
+      .eq("id", topJugador.member_id)
+      .maybeSingle();
+
+    if (jInfo) {
+      const frase = await getFraseNoUsada("jugador_partido");
+      const cuerpo = frase
+        ? `El jugador ${jInfo.display_name} declaró ante la prensa:\n\n"${frase}"`
+        : `Sumó ${topJugador.points} puntos en el partido.`;
+
+      await crearNoticiaAuto({
+        groupId: membership.group_id,
+        title: `⭐ Jugador del partido · Fecha ${match.number}: ${jInfo.display_name}`,
+        body: cuerpo,
+        payload: { match_id: matchId, member_id: topJugador.member_id },
+      });
+    }
+  }
+
+  // ─── Frases por ítem (Mejor gol, Mejor arquero, etc.) ───
+  const categoriasPorItem: Record<string, string> = {
+    mejor_gol: "mejor_gol",
+    mejor_arquero: "mejor_arquero",
+    buen_companero: "buen_companero",
+    mas_garra: "mas_garra",
+  };
+
+  for (const [itemKey, categoriaFrase] of Object.entries(categoriasPorItem)) {
+    // Buscar el item por su key
+    const { data: item } = await supabase
+      .from("items")
+      .select("id, label")
+      .eq("group_id", membership.group_id)
+      .eq("key", itemKey)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (!item) continue;
+
+    // Buscar quién ganó ese item en esta fecha
+    const { data: ganador } = await supabase
+      .from("match_item_wins")
+      .select("member_id")
+      .eq("match_id", matchId)
+      .eq("item_id", item.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!ganador) continue;
+
+    const { data: gInfo } = await supabase
+      .from("group_members")
+      .select("display_name")
+      .eq("id", ganador.member_id)
+      .maybeSingle();
+
+    if (!gInfo) continue;
+
+    const frase = await getFraseNoUsada(categoriaFrase);
+    if (!frase) continue;
+
+    const cuerpo = `El jugador ${gInfo.display_name} declaró ante la prensa:\n\n"${frase}"`;
+
+    await crearNoticiaAuto({
+      groupId: membership.group_id,
+      title: `🎯 ${item.label} · Fecha ${match.number}: ${gInfo.display_name}`,
+      body: cuerpo,
+      payload: { match_id: matchId, member_id: ganador.member_id, item_key: itemKey },
+    });
   }
 
   // Equipo Ideal
