@@ -14,6 +14,7 @@ type ConfigInput = {
   presentismo_value: number;
   dt_pick_value: number;
   equipo_ideal_value: number;
+  equipo_ideal_anio_size: number;
 };
 
 export async function guardarConfigGrupo(
@@ -48,6 +49,10 @@ export async function guardarConfigGrupo(
     return { ok: false, error: "Los valores no pueden ser negativos" };
   }
 
+   if (input.equipo_ideal_anio_size < 5 || input.equipo_ideal_anio_size > 11) {
+    return { ok: false, error: "El Equipo Ideal del Año debe tener entre 5 y 11 jugadores" };
+  }
+
   const { error } = await supabase
     .from("groups")
     .update({
@@ -55,6 +60,7 @@ export async function guardarConfigGrupo(
       presentismo_value: input.presentismo_value,
       dt_pick_value: input.dt_pick_value,
       equipo_ideal_value: input.equipo_ideal_value,
+      equipo_ideal_anio_size: input.equipo_ideal_anio_size,
     })
     .eq("id", membership.group_id);
 

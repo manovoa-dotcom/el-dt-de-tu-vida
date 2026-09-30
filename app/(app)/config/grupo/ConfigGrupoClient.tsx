@@ -9,6 +9,7 @@ type Grupo = {
   presentismo_value: number;
   dt_pick_value: number;
   equipo_ideal_value: number;
+  equipo_ideal_anio_size: number;
   invite_code: string | null;
 };
 
@@ -23,6 +24,7 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
       presentismo_value: grupo.presentismo_value,
       dt_pick_value: grupo.dt_pick_value,
       equipo_ideal_value: grupo.equipo_ideal_value,
+      equipo_ideal_anio_size: grupo.equipo_ideal_anio_size,
     }),
     [grupo]
   );
@@ -31,12 +33,13 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
   const [guardado, setGuardado] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
 
-  const hayCambios = useMemo(() => {
+const hayCambios = useMemo(() => {
     return (
       form.name !== inicial.name ||
       form.presentismo_value !== inicial.presentismo_value ||
       form.dt_pick_value !== inicial.dt_pick_value ||
-      form.equipo_ideal_value !== inicial.equipo_ideal_value
+      form.equipo_ideal_value !== inicial.equipo_ideal_value ||
+      form.equipo_ideal_anio_size !== inicial.equipo_ideal_anio_size
     );
   }, [form, inicial]);
 
@@ -178,6 +181,14 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
             value={form.equipo_ideal_value}
             onChange={(v) => setForm({ ...form, equipo_ideal_value: v })}
           />
+          <ValorInput
+            label="Equipo Ideal del Año"
+            hint="Cantidad de jugadores (5 a 11) + 1 DT"
+            value={form.equipo_ideal_anio_size}
+            onChange={(v) => setForm({ ...form, equipo_ideal_anio_size: v })}
+            min={5}
+            max={11}
+          />
         </div>
 
         <div className="mt-4 border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
@@ -230,20 +241,25 @@ function ValorInput({
   hint,
   value,
   onChange,
+  min = 0,
+  max,
 }: {
   label: string;
   hint: string;
   value: number;
   onChange: (v: number) => void;
-}) {
-  return (
+  min?: number;
+  max?: number;
+}) {  
+
+return (
     <div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">{label}</span>
         <div className="flex items-center gap-2">
-          <button
+           <button
             type="button"
-            onClick={() => onChange(Math.max(0, value - 1))}
+            onClick={() => onChange(Math.max(min, value - 1))}
             className="flex h-7 w-7 items-center justify-center rounded-lg border text-sm font-bold transition"
             style={{
               borderColor: "rgba(255,255,255,0.15)",
@@ -257,7 +273,13 @@ function ValorInput({
             value={value}
             onChange={(e) => {
               const v = parseInt(e.target.value, 10);
-              onChange(isNaN(v) ? 0 : Math.max(0, v));
+              if (isNaN(v)) {
+                onChange(min);
+                return;
+              }
+              let res = Math.max(min, v);
+              if (max !== undefined) res = Math.min(max, res);
+              onChange(res);
             }}
             min={0}
             className="w-14 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none"
@@ -269,7 +291,9 @@ function ValorInput({
           />
           <button
             type="button"
-            onClick={() => onChange(value + 1)}
+            onClick={() =>
+              onChange(max !== undefined ? Math.min(max, value + 1) : value + 1)
+            }
             className="flex h-7 w-7 items-center justify-center rounded-lg border text-sm font-bold transition"
             style={{
               borderColor: "rgba(255,255,255,0.15)",
