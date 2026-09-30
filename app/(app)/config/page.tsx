@@ -59,8 +59,7 @@ export default async function ConfigPage() {
       href: "/config/grupo",
       icon: "⚙️",
       title: "Configuración del grupo",
-      sub: "Nombre, link de invitación, presentismo, presupuesto",
-      disabled: true,
+      sub: "Nombre, link, valores de mercado del campeonato",
     },
     {
       href: "/config/elecciones",
