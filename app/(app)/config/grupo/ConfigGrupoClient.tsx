@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { guardarConfigGrupo, recalcularValores } from "./actions";
+import { guardarConfigGrupo } from "./actions";
 
 type Grupo = {
   name: string;
@@ -31,9 +31,8 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
 
   const [form, setForm] = useState(inicial);
   const [guardado, setGuardado] = useState(false);
-  const [recalculando, setRecalculando] = useState(false);
 
-const hayCambios = useMemo(() => {
+  const hayCambios = useMemo(() => {
     return (
       form.name !== inicial.name ||
       form.presentismo_value !== inicial.presentismo_value ||
@@ -45,7 +44,7 @@ const hayCambios = useMemo(() => {
 
   function mostrarToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
   }
 
   function guardar() {
@@ -53,26 +52,12 @@ const hayCambios = useMemo(() => {
       const res = await guardarConfigGrupo(form);
       if (res.ok) {
         setGuardado(true);
-        mostrarToast("Configuración guardada");
-        setTimeout(() => setGuardado(false), 2000);
+        mostrarToast(res.message ?? "Configuración guardada");
+        setTimeout(() => setGuardado(false), 2500);
         router.refresh();
       } else {
         mostrarToast(res.error ?? "Error");
       }
-    });
-  }
-
-  function recalcular() {
-    setRecalculando(true);
-    startTransition(async () => {
-      const res = await recalcularValores();
-      mostrarToast(
-        res.ok
-          ? "Valores recalculados. Andá a Convocatoria para verlos."
-          : res.error ?? "Error"
-      );
-      setRecalculando(false);
-      router.refresh();
     });
   }
 
@@ -81,7 +66,7 @@ const hayCambios = useMemo(() => {
     : null;
 
   let textoBoton = "Guardar cambios";
-  if (isPending) textoBoton = "Guardando...";
+  if (isPending) textoBoton = "Guardando y recalculando...";
   else if (guardado) textoBoton = "✓ Guardado";
   else if (!hayCambios) textoBoton = "✓ Sin cambios";
 
@@ -160,6 +145,7 @@ const hayCambios = useMemo(() => {
         </div>
         <p className="mb-3 text-[11px]" style={{ color: "var(--dim)" }}>
           Definen cuánto vale un jugador para armar el equipo de la próxima fecha.
+          Al guardar se recalculan automáticamente.
         </p>
 
         <div className="space-y-3">
@@ -182,34 +168,13 @@ const hayCambios = useMemo(() => {
             onChange={(v) => setForm({ ...form, equipo_ideal_value: v })}
           />
           <ValorInput
-            label="Equipo Ideal del Año"
+            label="Formato equipo ideal del año"
             hint="Cantidad de jugadores (5 a 11) + 1 DT"
             value={form.equipo_ideal_anio_size}
             onChange={(v) => setForm({ ...form, equipo_ideal_anio_size: v })}
             min={5}
             max={11}
           />
-        </div>
-
-        <div className="mt-4 border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <button
-            type="button"
-            onClick={recalcular}
-            disabled={recalculando || isPending}
-            className="w-full rounded-xl border py-2 text-xs font-bold transition disabled:opacity-50"
-            style={{
-              borderColor: "var(--gold)",
-              color: "var(--gold)",
-              background: "transparent",
-            }}
-          >
-            {recalculando
-              ? "Recalculando..."
-              : "🔄 Recalcular valores del próximo partido"}
-          </button>
-          <p className="mt-1 text-[10px]" style={{ color: "var(--dim)" }}>
-            Forzá el cálculo si cambiaste los valores y querés verlos ya.
-          </p>
         </div>
       </div>
 
@@ -232,6 +197,10 @@ const hayCambios = useMemo(() => {
       >
         {textoBoton}
       </button>
+
+      <p className="text-center text-[10px]" style={{ color: "var(--dim)" }}>
+        Al guardar, se recalculan los valores del próximo partido automáticamente.
+      </p>
     </div>
   );
 }
@@ -250,14 +219,13 @@ function ValorInput({
   onChange: (v: number) => void;
   min?: number;
   max?: number;
-}) {  
-
-return (
+}) {
+  return (
     <div>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">{label}</span>
         <div className="flex items-center gap-2">
-           <button
+          <button
             type="button"
             onClick={() => onChange(Math.max(min, value - 1))}
             className="flex h-7 w-7 items-center justify-center rounded-lg border text-sm font-bold transition"
@@ -281,7 +249,8 @@ return (
               if (max !== undefined) res = Math.min(max, res);
               onChange(res);
             }}
-            min={0}
+            min={min}
+            max={max}
             className="w-14 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none"
             style={{
               background: "rgba(242,182,50,0.15)",

@@ -53,7 +53,7 @@ export async function guardarConfigGrupo(
     return { ok: false, error: "El Equipo Ideal del Año debe tener entre 5 y 11 jugadores" };
   }
 
-  const { error } = await supabase
+   const { error } = await supabase
     .from("groups")
     .update({
       name,
@@ -69,12 +69,28 @@ export async function guardarConfigGrupo(
     return { ok: false, error: "Error al guardar" };
   }
 
+  // Recalcular valor de mercado del próximo partido automáticamente
+  const { data: proximo } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("group_id", membership.group_id)
+    .eq("status", "programada")
+    .order("number", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (proximo) {
+    await supabase.rpc("calcular_valor_mercado", {
+      p_match_id: proximo.id,
+    });
+  }
+
   revalidatePath("/config/grupo");
   revalidatePath("/config");
   revalidatePath("/inicio");
   revalidatePath("/convocatoria");
 
-  return { ok: true, message: "Configuración guardada" };
+  return { ok: true, message: "Configuración guardada y valores recalculados" };
 }
 
 // Fuerza el recálculo del valor de mercado del próximo partido programado
