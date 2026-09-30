@@ -2,9 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import ResultadosClient from "./ResultadosClient";
+import { formatearFechaAR, formatearHoraAR, DIAS_SEMANA, MESES_LARGOS } from "@/lib/fecha";
 
-const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
 
 export default async function CargarResultadosPage({
   searchParams,
@@ -79,9 +79,12 @@ export default async function CargarResultadosPage({
         >
           <div className="text-4xl">📝</div>
           <p className="bebas mt-3 text-xl">Sin partidos</p>
-          <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-            Cargá el primer partido desde Config → Próximo partido.
-          </p>
+           <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+          {DIAS_SEMANA[formatearFechaAR(match.kickoff_at).diaSemana].toLowerCase()}{" "}
+          {formatearFechaAR(match.kickoff_at).dia} de{" "}
+          {MESES_LARGOS[formatearFechaAR(match.kickoff_at).mes]}
+          {match.place ? ` · ${match.place}` : ""}
+        </p>
         </div>
       </div>
     );
@@ -203,7 +206,7 @@ export default async function CargarResultadosPage({
 
   const existingFaltas = (existingCards ?? []).map((c) => c.member_id);
 
-  const kickoff = new Date(match.kickoff_at);
+ 
 
   // Lista simplificada para el selector
   const partidosSelector = partidos.map((p) => ({

@@ -6,10 +6,7 @@ import BotonAnotarse from "./BotonAnotarse";
 import NoticiaForm from "./NoticiaForm";
 import NoticiaCard from "./NoticiaCard";
 import MarcarComoLeidas from "./MarcarComoLeidas";
-
-
-const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+import { formatearFechaAR, formatearHoraAR, DIAS_SEMANA, MESES_CORTOS } from "@/lib/fecha";
 
 export default async function InicioPage() {
   const supabase = await createClient();
@@ -163,7 +160,7 @@ export default async function InicioPage() {
   });
 
   const isAdmin = membership.role === "admin";
-  const kickoff = proximo ? new Date(proximo.kickoff_at) : null;
+  
   const bajaCerrada = proximo ? new Date() > new Date(proximo.baja_closes_at) : false;
   const completo = proximo ? anotadosCount >= proximo.cupo : false;
 
@@ -219,9 +216,10 @@ export default async function InicioPage() {
             PRÓXIMO PARTIDO · FECHA {proximo.number}
           </div>
           <div className="bebas mt-1 text-3xl">
-            {DIAS[kickoff.getDay()]} {kickoff.getDate()} {MESES[kickoff.getMonth()]} ·{" "}
-            {String(kickoff.getHours()).padStart(2, "0")}:
-            {String(kickoff.getMinutes()).padStart(2, "0")}
+            {DIAS_SEMANA[formatearFechaAR(proximo.kickoff_at).diaSemana]}{" "}
+            {formatearFechaAR(proximo.kickoff_at).dia}{" "}
+            {MESES_CORTOS[formatearFechaAR(proximo.kickoff_at).mes]} ·{" "}
+            {formatearHoraAR(proximo.kickoff_at)}
           </div>
           {proximo.place && (
             <div className="mt-1 text-xs" style={{ color: "var(--dim)" }}>

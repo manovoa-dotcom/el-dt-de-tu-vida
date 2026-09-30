@@ -37,6 +37,7 @@ export default function PartidoForm({ partido }: { partido: Partido | null }) {
         infinito: false,
       };
     }
+    // Convertir UTC a hora argentina para el input datetime-local
     const d = new Date(partido.kickoff_at);
     const ar = new Date(d.getTime() - 3 * 60 * 60 * 1000);
     const kickoffLocal = ar.toISOString().slice(0, 16);

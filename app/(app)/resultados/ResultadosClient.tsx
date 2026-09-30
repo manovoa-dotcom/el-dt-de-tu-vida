@@ -3,22 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
+import {
+  formatearFechaAR,
+  formatearHoraAR,
+  DIAS_SEMANA,
+  MESES_CORTOS,
+} from "@/lib/fecha";
 import type {
   DTResultado,
   JugadorResultado,
   PartidoResumen,
 } from "./page";
 
-const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
-const MESES = [
-  "ene","feb","mar","abr","may","jun",
-  "jul","ago","sep","oct","nov","dic",
-];
-
-// Layout del Equipo Ideal: 1 portero arriba + líneas abajo.
-// Coordenadas [x%, y%]
+// Posiciones en la cancha según cantidad de jugadores del Equipo Ideal
 const POSICIONES: Record<number, [number, number][]> = {
-  // 5: 1 + 4
   5: [
     [50, 15],
     [15, 60],
@@ -26,7 +24,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [62, 60],
     [85, 60],
   ],
-  // 6: 1 + 2 + 3
   6: [
     [50, 15],
     [30, 45],
@@ -35,7 +32,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [50, 78],
     [80, 78],
   ],
-  // 7: 1 + 3 + 3
   7: [
     [50, 15],
     [20, 48],
@@ -45,7 +41,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [50, 80],
     [80, 80],
   ],
-  // 8: 1 + 3 + 4
   8: [
     [50, 14],
     [20, 44],
@@ -56,7 +51,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [62, 78],
     [87, 78],
   ],
-  // 9: 1 + 4 + 4
   9: [
     [50, 14],
     [13, 42],
@@ -68,7 +62,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [62, 78],
     [87, 78],
   ],
-  // 10: 1 + 3 + 3 + 3
   10: [
     [50, 12],
     [20, 38],
@@ -81,7 +74,6 @@ const POSICIONES: Record<number, [number, number][]> = {
     [50, 90],
     [80, 90],
   ],
-  // 11: 1 + 4 + 3 + 3
   11: [
     [50, 12],
     [13, 36],
@@ -117,8 +109,6 @@ export default function ResultadosClient({
   const router = useRouter();
   const [verSelector, setVerSelector] = useState(false);
 
-  const fecha = new Date(partidoActual.kickoff_at);
-
   function cambiarFecha(number: number) {
     setVerSelector(false);
     router.push(`/resultados?fecha=${number}`);
@@ -126,6 +116,9 @@ export default function ResultadosClient({
 
   const podio = dts.slice(0, 3);
   const idsEquipoIdeal = new Set(equipoIdeal.map((j) => j.member_id));
+
+  const fechaInfo = formatearFechaAR(partidoActual.kickoff_at);
+  const hora = formatearHoraAR(partidoActual.kickoff_at);
 
   return (
     <div>
@@ -145,7 +138,8 @@ export default function ResultadosClient({
               FECHA {partidoActual.number}
             </div>
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>
-              {DIAS[fecha.getDay()]} {fecha.getDate()} de {MESES[fecha.getMonth()]}
+              {DIAS_SEMANA[fechaInfo.diaSemana]} {fechaInfo.dia} de{" "}
+              {MESES_CORTOS[fechaInfo.mes]} · {hora}
               {partidoActual.place ? ` · ${partidoActual.place}` : ""}
             </div>
           </div>
@@ -169,8 +163,8 @@ export default function ResultadosClient({
             }}
           >
             {partidos.map((p) => {
-              const d = new Date(p.kickoff_at);
               const activo = p.number === partidoActual.number;
+              const info = formatearFechaAR(p.kickoff_at);
               return (
                 <button
                   key={p.id}
@@ -190,7 +184,8 @@ export default function ResultadosClient({
                       Fecha {p.number}
                     </div>
                     <div className="text-[10px]" style={{ color: "var(--dim)" }}>
-                      {DIAS[d.getDay()]} {d.getDate()} {MESES[d.getMonth()]}
+                      {DIAS_SEMANA[info.diaSemana]} {info.dia}{" "}
+                      {MESES_CORTOS[info.mes]}
                     </div>
                   </div>
                   {activo && (
@@ -338,7 +333,6 @@ function CanchaIdeal({ jugadores }: { jugadores: JugadorResultado[] }) {
         border: "2px solid rgba(255,255,255,0.4)",
       }}
     >
-      {/* Círculo central */}
       <div
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
@@ -347,12 +341,10 @@ function CanchaIdeal({ jugadores }: { jugadores: JugadorResultado[] }) {
           border: "2.5px solid rgba(255,255,255,0.4)",
         }}
       />
-      {/* Línea del medio */}
       <div
         className="absolute left-0 right-0 top-1/2"
         style={{ height: 2.5, background: "rgba(255,255,255,0.4)" }}
       />
-      {/* Área de arriba */}
       <div
         className="absolute left-1/2 -translate-x-1/2"
         style={{
@@ -366,7 +358,6 @@ function CanchaIdeal({ jugadores }: { jugadores: JugadorResultado[] }) {
           borderBottomRightRadius: 10,
         }}
       />
-      {/* Área de abajo */}
       <div
         className="absolute left-1/2 -translate-x-1/2"
         style={{
@@ -381,7 +372,6 @@ function CanchaIdeal({ jugadores }: { jugadores: JugadorResultado[] }) {
         }}
       />
 
-      {/* Jugadores */}
       {jugadores.map((j, idx) => {
         const [x, y] = posiciones[idx] ?? [50, 50];
         return (
@@ -428,9 +418,8 @@ function CanchaIdeal({ jugadores }: { jugadores: JugadorResultado[] }) {
 }
 
 function generarPosiciones(n: number): [number, number][] {
-  // Fallback para cantidades no previstas
   const res: [number, number][] = [];
-  res.push([50, 15]); // portero
+  res.push([50, 15]);
   const resto = n - 1;
   const filas = Math.min(3, Math.ceil(resto / 4));
   const perFila = Math.ceil(resto / filas);

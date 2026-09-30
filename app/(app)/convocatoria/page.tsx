@@ -1,9 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ConvocatoriaClient from "./ConvocatoriaClient";
-
-const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+import { formatearFechaAR, formatearHoraAR, DIAS_SEMANA, MESES_CORTOS } from "@/lib/fecha";
 
 export type Fila = {
   member_id: string;
@@ -230,7 +228,7 @@ export default async function ConvocatoriaPage() {
     (c) => c.attendance_status === "anotado" || c.attendance_status === "presente"
   ).length;
 
-  const kickoff = new Date(partido.kickoff_at);
+  
   const bajaCloses = new Date(partido.baja_closes_at);
   const equiposBloqueados = new Date() > new Date(partido.teams_lock_at);
 
@@ -238,10 +236,11 @@ export default async function ConvocatoriaPage() {
     <div>
       <header className="px-4 pb-2 pt-6">
         <h1 className="bebas text-3xl">Convocatoria</h1>
-        <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-          Fecha {partido.number} · {DIAS[kickoff.getDay()]} {kickoff.getDate()} de{" "}
-          {MESES[kickoff.getMonth()]} · {String(kickoff.getHours()).padStart(2, "0")}:
-          {String(kickoff.getMinutes()).padStart(2, "0")} hs
+       <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+          Fecha {partido.number} · {DIAS_SEMANA[formatearFechaAR(partido.kickoff_at).diaSemana]}{" "}
+          {formatearFechaAR(partido.kickoff_at).dia} de{" "}
+          {MESES_CORTOS[formatearFechaAR(partido.kickoff_at).mes]} ·{" "}
+          {formatearHoraAR(partido.kickoff_at)} hs
         </p>
       </header>
 
