@@ -516,7 +516,9 @@ else if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
       </div>
 
       {/* Barra MI EQUIPO */}
+            {/* Barra MI EQUIPO */}
       <div
+        id="onboarding-mi-equipo"
         className="sticky top-0 z-30 mx-3 mt-3 rounded-2xl px-4 py-3"
         style={{
           background: "rgba(17,53,42,0.96)",
@@ -578,7 +580,10 @@ else if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
       </div>
 
       {/* Lista de convocados (jugables) */}
-      <div className="bebas mt-4 px-4 text-xl tracking-wider">
+      <div
+        id="onboarding-convocados"
+        className="bebas mt-4 px-4 text-xl tracking-wider"
+      >
         CONVOCADOS ({jugables.length})
       </div>
       <div className="mt-1">

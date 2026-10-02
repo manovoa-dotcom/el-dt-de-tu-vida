@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import BotonAyuda from "@/components/BotonAyuda";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import BotonAnotarse from "./BotonAnotarse";
@@ -191,7 +192,8 @@ export default async function InicioPage() {
             </div>
           </Link>
         </div>
-                <div className="mt-2 flex items-center gap-4">
+         
+<div className="mt-2 flex items-center gap-4">
           <Link
             href="/como-se-juega"
             className="inline-flex items-center gap-1 text-xs no-underline"
@@ -199,6 +201,7 @@ export default async function InicioPage() {
           >
             ❓ Cómo se juega
           </Link>
+          <BotonAyuda />
           <Link
             href="/config/correcciones"
             className="inline-flex items-center gap-1 text-xs no-underline"
@@ -207,6 +210,7 @@ export default async function InicioPage() {
             📋 Historial
           </Link>
         </div>
+
       </header>
 
       {proximo ? (
@@ -249,14 +253,16 @@ export default async function InicioPage() {
             />
           </div>
 
-          <BotonAnotarse
-            matchId={proximo.id}
-            miEstado={miEstado}
-            cupo={proximo.cupo}
-            anotadosCount={anotadosCount}
-            bajaCerrada={bajaCerrada}
-            completo={completo}
-          />
+                  <div id="onboarding-btn-anotarse">
+            <BotonAnotarse
+              matchId={proximo.id}
+              miEstado={miEstado}
+              cupo={proximo.cupo}
+              anotadosCount={anotadosCount}
+              bajaCerrada={bajaCerrada}
+              completo={completo}
+            />
+          </div>
 
           {espera > 0 && (
             <div
@@ -266,7 +272,7 @@ export default async function InicioPage() {
               Lista de espera: {espera}
             </div>
           )}
-        </div>
+         </div>
       ) : (
         <div
           className="mx-3 mt-3 rounded-2xl p-5 text-center"

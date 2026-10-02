@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, Inter } from "next/font/google";
+import { Bebas_Neue, Inter, Bangers } from "next/font/google";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
@@ -13,7 +13,11 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 });
-
+const bangers = Bangers({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-bangers",
+});
 export const metadata: Metadata = {
   title: "El DT de tu vida",
   description:
@@ -46,7 +50,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`notranslate ${bebas.variable} ${inter.variable}`}
+           className={`notranslate ${bebas.variable} ${inter.variable} ${bangers.variable}`}
     >
       <body>
         {children}
