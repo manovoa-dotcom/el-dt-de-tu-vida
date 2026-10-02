@@ -59,13 +59,33 @@ export async function anularTarjeta(
     return { ok: false, error: "Error al anular la tarjeta" };
   }
 
-     // Registrar en historial público de correcciones
+  // Buscar el nombre del jugador y el número de fecha
+  const { data: jugador } = await supabase
+    .from("group_members")
+    .select("display_name")
+    .eq("id", card.member_id)
+    .maybeSingle();
+
+  const { data: partido } = await supabase
+    .from("matches")
+    .select("number")
+    .eq("id", card.match_id)
+    .maybeSingle();
+
+  const nombreJugador = jugador?.display_name ?? "un jugador";
+  const numeroFecha = partido?.number ?? "?";
+
   const { error: errCorr } = await supabase.from("corrections").insert({
     group_id: membership.group_id,
     entity: "tarjeta",
     entity_id: cardId,
-    description: `Se anuló una tarjeta roja. Motivo: ${razon}`,
-    after_data: { annulled: true, annul_reason: razon },
+    description: `🟥 Se anuló la tarjeta roja de ${nombreJugador} (Fecha ${numeroFecha}). Motivo: ${razon}`,
+    after_data: {
+      annulled: true,
+      annul_reason: razon,
+      member_name: nombreJugador,
+      match_number: numeroFecha,
+    },
     by_user_id: user.id,
   });
 
@@ -76,7 +96,9 @@ export async function anularTarjeta(
       error: `Tarjeta anulada pero NO se registró en historial: ${errCorr.message}`,
     };
   }
+
   revalidatePath("/ranking");
+  revalidatePath("/config/correcciones");
   return { ok: true, message: "Tarjeta anulada" };
 }
 
@@ -103,7 +125,7 @@ export async function rehabilitarTarjeta(
 
   const { data: card } = await supabase
     .from("cards")
-    .select("id, annul_reason")
+    .select("id, member_id, match_id, annul_reason")
     .eq("id", cardId)
     .maybeSingle();
 
@@ -124,12 +146,33 @@ export async function rehabilitarTarjeta(
     return { ok: false, error: "Error al rehabilitar la tarjeta" };
   }
 
-   const { error: errCorr } = await supabase.from("corrections").insert({
+  // Buscar el nombre del jugador y el número de fecha
+  const { data: jugador } = await supabase
+    .from("group_members")
+    .select("display_name")
+    .eq("id", card.member_id)
+    .maybeSingle();
+
+  const { data: partido } = await supabase
+    .from("matches")
+    .select("number")
+    .eq("id", card.match_id)
+    .maybeSingle();
+
+  const nombreJugador = jugador?.display_name ?? "un jugador";
+  const numeroFecha = partido?.number ?? "?";
+
+  const { error: errCorr } = await supabase.from("corrections").insert({
     group_id: membership.group_id,
     entity: "tarjeta",
     entity_id: cardId,
-    description: `Se rehabilitó una tarjeta roja (antes anulada).`,
-    before_data: { annulled: true, annul_reason: card.annul_reason },
+    description: `✅ Se rehabilitó la tarjeta roja de ${nombreJugador} (Fecha ${numeroFecha}).`,
+    before_data: {
+      annulled: true,
+      annul_reason: card.annul_reason,
+      member_name: nombreJugador,
+      match_number: numeroFecha,
+    },
     after_data: { annulled: false },
     by_user_id: user.id,
   });
@@ -143,5 +186,6 @@ export async function rehabilitarTarjeta(
   }
 
   revalidatePath("/ranking");
+  revalidatePath("/config/correcciones");
   return { ok: true, message: "Tarjeta rehabilitada" };
 }
