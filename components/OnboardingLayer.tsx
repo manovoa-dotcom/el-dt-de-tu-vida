@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import GloboComic from "./GloboComic";
 import {
   PASOS_ONBOARDING,
@@ -15,6 +15,7 @@ type Props = {
 
 export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const [activo, setActivo] = useState(false);
   const [pasoIdx, setPasoIdx] = useState(0);
 
@@ -23,7 +24,6 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     if (typeof window === "undefined") return;
     const visto = localStorage.getItem(ONBOARDING_STORAGE_KEY);
     if (!visto) {
-      // Arranca después de un pequeño delay para que la página cargue
       const timer = setTimeout(() => setActivo(true), 800);
       return () => clearTimeout(timer);
     }
@@ -65,12 +65,46 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
 
   // Si no es de esta pantalla, mostramos un globo intermedio que invita a navegar
   if (!esDeEstaPantalla) {
+    const pageBloqueada = paso.page;
+    let pasosEnEstaPagina = 0;
+    for (let i = pasoIdx; i < pasosDisponibles.length; i++) {
+      if (pasosDisponibles[i].page === pageBloqueada) pasosEnEstaPagina++;
+      else break;
+    }
+
+    // Avanza al siguiente paso, terminando si es el último
+    const avanzarPaso = () => {
+      if (pasoIdx >= pasosDisponibles.length - 1) terminar();
+      else setPasoIdx(pasoIdx + 1);
+    };
+
+    // Navega a la página y avanza
+    const irYAvanzar = () => {
+      router.push(`/${paso.page}`);
+      avanzarPaso();
+    };
+
+    // Saltea todos los pasos de esta página
+    const saltarTodosDeEstaPagina = () => {
+      let idx = pasoIdx;
+      while (
+        idx < pasosDisponibles.length &&
+        pasosDisponibles[idx].page === pageBloqueada
+      ) {
+        idx++;
+      }
+      if (idx >= pasosDisponibles.length) terminar();
+      else setPasoIdx(idx);
+    };
+
     return (
       <GloboNavegacion
         paso={paso}
         pasoActual={pasoIdx}
         totalPasos={pasosDisponibles.length}
-        onNext={() => setPasoIdx(pasoIdx + 1)}
+        pasosEnEstaPagina={pasosEnEstaPagina}
+        onIr={irYAvanzar}
+        onSaltar={saltarTodosDeEstaPagina}
         onPrev={() => setPasoIdx(Math.max(0, pasoIdx - 1))}
         onSkip={terminar}
       />
@@ -104,14 +138,18 @@ function GloboNavegacion({
   paso,
   pasoActual,
   totalPasos,
-  onNext,
+  pasosEnEstaPagina,
+  onIr,
+  onSaltar,
   onPrev,
   onSkip,
 }: {
   paso: PasoOnboarding;
   pasoActual: number;
   totalPasos: number;
-  onNext: () => void;
+  pasosEnEstaPagina: number;
+  onIr: () => void;
+  onSaltar: () => void;
   onPrev: () => void;
   onSkip: () => void;
 }) {
@@ -121,18 +159,31 @@ function GloboNavegacion({
     resultados: "Resultados",
   };
 
+  const nombre = nombrePagina[paso.page] ?? paso.page;
+  const texto =
+    pasosEnEstaPagina > 1
+      ? `El tutorial continúa en "${nombre}" con ${pasosEnEstaPagina} pasos.\n\nTocá "Ir a ${nombre}" y seguimos ahí. O si preferís, andá vos mismo con la barra de abajo.`
+      : `El tutorial continúa en "${nombre}".\n\nTocá "Ir a ${nombre}" y seguimos ahí. O si preferís, andá vos mismo con la barra de abajo.`;
+
   return (
     <GloboComic
       pasoActual={pasoActual}
       totalPasos={totalPasos}
-      titulo={`Vamos a ${nombrePagina[paso.page] ?? paso.page}`}
-      texto={`Para el siguiente paso, andá a la pestaña "${nombrePagina[paso.page] ?? paso.page}" y el tutorial continúa automáticamente.`}
+      titulo={`Vamos a ${nombre}`}
+      texto={texto}
       targetId="onboarding-tabbar"
       posicion="arriba"
-      botonSiguiente="Saltar este paso →"
-      onNext={onNext}
+      botonSiguiente={`Ir a ${nombre} →`}
+      onNext={onIr}
       onPrev={onPrev}
       onSkip={onSkip}
+      linkSecundario={{
+        label:
+          pasosEnEstaPagina > 1
+            ? `Saltar los ${pasosEnEstaPagina} pasos`
+            : "Saltar este paso",
+        onClick: onSaltar,
+      }}
     />
   );
 }

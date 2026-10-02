@@ -15,6 +15,10 @@ type Props = {
   onNext: () => void;
   onPrev: () => void;
   onSkip: () => void;
+  linkSecundario?: {
+    label: string;
+    onClick: () => void;
+  };
 };
 
 export default function GloboComic({
@@ -28,6 +32,7 @@ export default function GloboComic({
   onNext,
   onPrev,
   onSkip,
+  linkSecundario,
 }: Props) {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
@@ -297,13 +302,26 @@ export default function GloboComic({
           </div>
 
           {/* Saltar */}
+                   {/* Link secundario (opcional) */}
+          {linkSecundario && (
+            <button
+              type="button"
+              onClick={linkSecundario.onClick}
+              className="mt-3 block text-center text-[11px] underline"
+              style={{ color: "#5b6b60", width: "100%" }}
+            >
+              {linkSecundario.label}
+            </button>
+          )}
+
+          {/* Saltar tutorial completo */}
           <button
             type="button"
             onClick={onSkip}
-            className="mt-3 block text-center text-[11px] underline"
-            style={{ color: "#5b6b60", width: "100%" }}
+            className="mt-1 block text-center text-[10px] underline"
+            style={{ color: "#8a9a8f", width: "100%" }}
           >
-            Saltar tutorial
+            Saltar tutorial completo
           </button>
         </div>
       </div>
