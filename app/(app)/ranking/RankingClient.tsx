@@ -1,18 +1,18 @@
 "use client";
+
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { anularTarjeta, rehabilitarTarjeta } from "./actions";
-import { useState } from "react";
+import { useTransition, useState } from "react";
 import Avatar from "@/components/Avatar";
 import Carta from "@/components/Carta";
 import CanchaEquipo from "@/components/CanchaEquipo";
+import { anularTarjeta, rehabilitarTarjeta } from "./actions";
 import type {
   DTRanking,
   JugadorRanking,
   ItemInfo,
   EquipoDTFecha,
   ResultadoFechaJugador,
- TarjetaDetalle,
+  TarjetaDetalle,
 } from "./page";
 
 type Props = {
@@ -187,7 +187,6 @@ export default function RankingClient({
         </>
       )}
 
-      {/* Equipo Ideal del Torneo - siempre visible */}
       <div className="bebas mt-8 px-4 text-xl tracking-wider">
         ⭐ EQUIPO IDEAL DEL TORNEO
       </div>
@@ -605,15 +604,9 @@ function FichaJugador({
   const [verHistorial, setVerHistorial] = useState(false);
   const [fechaAbierta, setFechaAbierta] = useState<string | null>(null);
   const [verTarjetas, setVerTarjetas] = useState(false);
+
   const itemsLogrados = items.filter((it) => (jugador.por_item[it.key] ?? 0) > 0);
 
-  {verTarjetas && jugador.tarjetas_detalle.length > 0 && (
-        <div className="mt-3">
-          {jugador.tarjetas_detalle.map((t) => (
-            <FilaTarjeta key={t.id} tarjeta={t} />
-          ))}
-        </div>
-      )}
   return (
     <div className="mx-3 mt-3 pb-6">
       <button
@@ -636,7 +629,8 @@ function FichaJugador({
         />
       </div>
 
-            {jugador.tarjetas_detalle.length > 0 && (
+      {/* Botón tarjetas */}
+      {jugador.tarjetas_detalle.length > 0 && (
         <div className="mt-4 flex justify-center">
           <button
             type="button"
@@ -653,6 +647,16 @@ function FichaJugador({
         </div>
       )}
 
+      {/* Lista de tarjetas (ACÁ VA, dentro del return) */}
+      {verTarjetas && jugador.tarjetas_detalle.length > 0 && (
+        <div className="mt-3">
+          {jugador.tarjetas_detalle.map((t) => (
+            <FilaTarjeta key={t.id} tarjeta={t} />
+          ))}
+        </div>
+      )}
+
+      {/* Botón historial */}
       <div className="mt-4 flex justify-center">
         <button
           type="button"
@@ -796,11 +800,8 @@ function FechaHistorial({
     </div>
   );
 }
-function FilaTarjeta({
-  tarjeta,
-}: {
-  tarjeta: TarjetaDetalle;
-}) {
+
+function FilaTarjeta({ tarjeta }: { tarjeta: TarjetaDetalle }) {
   const [mostrarMotivo, setMostrarMotivo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -809,12 +810,12 @@ function FilaTarjeta({
 
   function mostrarToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
   }
 
   function ejecutarAnular() {
     if (motivo.trim().length < 3) {
-      mostrarToast("Poné un motivo");
+      mostrarToast("Poné un motivo de al menos 3 letras");
       return;
     }
     startTransition(async () => {
@@ -838,8 +839,12 @@ function FilaTarjeta({
     <div
       className="mt-2 rounded-xl p-3"
       style={{
-        background: tarjeta.annulled ? "rgba(255,255,255,0.03)" : "rgba(226,59,77,0.08)",
-        border: `1px solid ${tarjeta.annulled ? "rgba(255,255,255,0.06)" : "rgba(226,59,77,0.25)"}`,
+        background: tarjeta.annulled
+          ? "rgba(255,255,255,0.03)"
+          : "rgba(226,59,77,0.08)",
+        border: `1px solid ${
+          tarjeta.annulled ? "rgba(255,255,255,0.06)" : "rgba(226,59,77,0.25)"
+        }`,
         opacity: tarjeta.annulled ? 0.7 : 1,
       }}
     >
@@ -856,18 +861,26 @@ function FilaTarjeta({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-base">🟥</span>
-            <span className="text-sm font-semibold">Fecha {tarjeta.match_number}</span>
+            <span className="text-sm font-semibold">
+              Fecha {tarjeta.match_number}
+            </span>
             {tarjeta.annulled && (
               <span
                 className="rounded-full px-2 py-0.5 text-[9px] font-bold"
-                style={{ background: "rgba(255,255,255,0.1)", color: "var(--dim)" }}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  color: "var(--dim)",
+                }}
               >
                 ANULADA
               </span>
             )}
           </div>
           {tarjeta.annulled && tarjeta.annul_reason && (
-            <div className="mt-0.5 text-[10px] italic" style={{ color: "var(--dim)" }}>
+            <div
+              className="mt-0.5 text-[10px] italic"
+              style={{ color: "var(--dim)" }}
+            >
               Motivo: {tarjeta.annul_reason}
             </div>
           )}
