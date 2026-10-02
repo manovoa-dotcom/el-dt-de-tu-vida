@@ -46,8 +46,7 @@ export default async function ConfigPage() {
       href: "/config/items",
       icon: "⚽",
       title: "Ítems y puntos",
-      sub: "Qué suma puntos y cuánto vale cada uno",
-      disabled: true,
+      sub: "Qué suma puntos y cuánto vale cada uno",      
     },
     {
       href: "/config/resultados",
