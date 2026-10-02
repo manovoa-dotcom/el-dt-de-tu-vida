@@ -59,8 +59,8 @@ export async function anularTarjeta(
     return { ok: false, error: "Error al anular la tarjeta" };
   }
 
-  // Registrar en historial público de correcciones
-  await supabase.from("corrections").insert({
+     // Registrar en historial público de correcciones
+  const { error: errCorr } = await supabase.from("corrections").insert({
     group_id: membership.group_id,
     entity: "tarjeta",
     entity_id: cardId,
@@ -69,6 +69,13 @@ export async function anularTarjeta(
     by_user_id: user.id,
   });
 
+  if (errCorr) {
+    console.error("Error insertando corrección:", errCorr);
+    return {
+      ok: false,
+      error: `Tarjeta anulada pero NO se registró en historial: ${errCorr.message}`,
+    };
+  }
   revalidatePath("/ranking");
   return { ok: true, message: "Tarjeta anulada" };
 }
@@ -117,7 +124,7 @@ export async function rehabilitarTarjeta(
     return { ok: false, error: "Error al rehabilitar la tarjeta" };
   }
 
-  await supabase.from("corrections").insert({
+   const { error: errCorr } = await supabase.from("corrections").insert({
     group_id: membership.group_id,
     entity: "tarjeta",
     entity_id: cardId,
@@ -126,6 +133,14 @@ export async function rehabilitarTarjeta(
     after_data: { annulled: false },
     by_user_id: user.id,
   });
+
+  if (errCorr) {
+    console.error("Error insertando corrección:", errCorr);
+    return {
+      ok: false,
+      error: `Tarjeta rehabilitada pero NO se registró en historial: ${errCorr.message}`,
+    };
+  }
 
   revalidatePath("/ranking");
   return { ok: true, message: "Tarjeta rehabilitada" };
