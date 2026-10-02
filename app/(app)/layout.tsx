@@ -4,7 +4,7 @@ import TabBar from "@/components/TabBar";
 import ProfileFab from "@/components/ProfileFab";
 import LogoutButton from "@/components/LogoutButton";
 import AppBadge from "@/components/AppBadge";
-
+import OnboardingLayer from "@/components/OnboardingLayer";
 
 export default async function AppLayout({
   children,
@@ -18,9 +18,9 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
+   const { data: membership } = await supabase
     .from("group_members")
-    .select("role, status, display_name")
+    .select("role, status, display_name, group_id")
     .eq("user_id", user.id)
     .in("status", ["activo", "pendiente"])
     .limit(1)
@@ -83,6 +83,17 @@ export default async function AppLayout({
     .eq("id", user.id)
     .maybeSingle();
 
+// ¿Hay algún partido ya jugado? (para el paso de Resultados)
+  const { data: algunPartidoJugado } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("group_id", membership.group_id)
+    .in("status", ["jugada", "cerrada"])
+    .limit(1)
+    .maybeSingle();
+
+  const hayPartidoJugado = !!algunPartidoJugado;
+
   // Contar noticias no leídas
   const { data: miembro } = await supabase
     .from("group_members")
@@ -122,13 +133,14 @@ export default async function AppLayout({
           "radial-gradient(circle at 80% -10%, #1e6a47 0, transparent 45%)",
       }}
     >
-            <ProfileFab
+      <ProfileFab
         alias={membership.display_name}
         photoUrl={perfil?.photo_url ?? null}
       />
       <AppBadge count={noLeidas} />
       {children}
       <TabBar isAdmin={isAdmin} badgeInicio={noLeidas} />
+      <OnboardingLayer hayPartidoJugado={hayPartidoJugado} />
     </div>
   );
 }
