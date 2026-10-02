@@ -191,13 +191,22 @@ export default async function InicioPage() {
             </div>
           </Link>
         </div>
-        <Link
-          href="/como-se-juega"
-          className="mt-2 inline-flex items-center gap-1 text-xs no-underline"
-          style={{ color: "var(--gold)" }}
-        >
-          ❓ Cómo se juega
-        </Link>
+                <div className="mt-2 flex items-center gap-4">
+          <Link
+            href="/como-se-juega"
+            className="inline-flex items-center gap-1 text-xs no-underline"
+            style={{ color: "var(--gold)" }}
+          >
+            ❓ Cómo se juega
+          </Link>
+          <Link
+            href="/config/correcciones"
+            className="inline-flex items-center gap-1 text-xs no-underline"
+            style={{ color: "var(--dim)" }}
+          >
+            📋 Historial
+          </Link>
+        </div>
       </header>
 
       {proximo ? (

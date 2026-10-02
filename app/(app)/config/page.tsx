@@ -82,6 +82,12 @@ export default async function ConfigPage() {
       sub: "Resumen del año, presentismo sorpresa y respaldo",
       disabled: true,
     },
+    {
+      href: "/config/correcciones",
+      icon: "📋",
+      title: "Historial de correcciones",
+      sub: "Cambios que hizo el admin (visible para el grupo)",
+    },
   ];
 
   return (
