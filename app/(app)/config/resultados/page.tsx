@@ -4,6 +4,7 @@ import Link from "next/link";
 import ResultadosClient from "./ResultadosClient";
 import {
   formatearFechaAR,
+  formatearHoraAR,
   DIAS_SEMANA,
   MESES_LARGOS,
 } from "@/lib/fecha";
@@ -93,13 +94,32 @@ export default async function CargarResultadosPage({
 
   const params = await searchParams;
   const fechaQuery = params.fecha ? parseInt(params.fecha, 10) : null;
+  const nowIso = new Date().toISOString();
 
-  let match =
-    (fechaQuery && partidos.find((p) => p.number === fechaQuery)) || null;
+  let match: (typeof partidos)[number] | null = null;
   let isEditing = false;
+  let partidoNoJugado: (typeof partidos)[number] | null = null;
 
-  if (!match) {
-    const nowIso = new Date().toISOString();
+  // Si viene ?fecha=N
+  if (fechaQuery) {
+    const encontrado = partidos.find((p) => p.number === fechaQuery);
+    if (encontrado) {
+      if (encontrado.status === "jugada" || encontrado.status === "cerrada") {
+        match = encontrado;
+        isEditing = true;
+      } else if (encontrado.status === "programada") {
+        if (encontrado.kickoff_at < nowIso) {
+          match = encontrado;
+        } else {
+          // El partido todavía no se jugó
+          partidoNoJugado = encontrado;
+        }
+      }
+    }
+  }
+
+  // Sin ?fecha=N, buscar automáticamente
+  if (!match && !partidoNoJugado) {
     const pendiente = partidos.find(
       (p) => p.status === "programada" && p.kickoff_at < nowIso
     );
@@ -114,8 +134,46 @@ export default async function CargarResultadosPage({
         isEditing = true;
       }
     }
-  } else {
-    isEditing = match.status === "jugada" || match.status === "cerrada";
+  }
+
+  // Caso especial: el partido todavía no se jugó
+  if (partidoNoJugado) {
+    const kickoff = new Date(partidoNoJugado.kickoff_at);
+    return (
+      <div>
+        <header className="px-4 pb-2 pt-6">
+          <Link
+            href="/config"
+            className="text-xs no-underline"
+            style={{ color: "var(--dim)" }}
+          >
+            ← Config
+          </Link>
+          <h1 className="bebas mt-2 text-3xl">Cargar resultados</h1>
+        </header>
+        <div
+          className="mx-3 mt-3 rounded-2xl p-6 text-center"
+          style={{
+            background: "var(--g1)",
+            border: "1px solid rgba(242,182,50,0.4)",
+          }}
+        >
+          <div className="text-4xl">⏳</div>
+          <p className="bebas mt-3 text-xl" style={{ color: "var(--gold)" }}>
+            El partido todavía no se jugó
+          </p>
+          <p className="mt-2 text-xs" style={{ color: "var(--dim)" }}>
+            Fecha {partidoNoJugado.number} ·{" "}
+            {formatearFechaAR(partidoNoJugado.kickoff_at).dia}/
+            {formatearFechaAR(partidoNoJugado.kickoff_at).mes + 1} ·{" "}
+            {formatearHoraAR(partidoNoJugado.kickoff_at)} hs
+          </p>
+          <p className="mt-3 text-xs" style={{ color: "var(--tx)" }}>
+            Vas a poder cargar los resultados después de la hora del partido.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!match) {

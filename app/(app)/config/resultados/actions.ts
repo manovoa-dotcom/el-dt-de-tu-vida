@@ -39,16 +39,28 @@ export async function guardarResultados(
     return { ok: false, error: "Solo el admin puede cargar resultados" };
   }
 
-  const { data: match } = await supabase
+ const { data: match } = await supabase
     .from("matches")
-    .select("id, group_id, number, status, season_id")
+    .select("id, group_id, number, status, season_id, kickoff_at")
     .eq("id", matchId)
     .eq("group_id", membership.group_id)
     .maybeSingle();
 
-  if (!match) return { ok: false, error: "Partido no encontrado" };
+    if (!match) return { ok: false, error: "Partido no encontrado" };
   if (match.status !== "programada" && match.status !== "jugada") {
     return { ok: false, error: "El partido no está en estado para cargar resultados" };
+  }
+
+  // No se pueden cargar resultados antes de que el partido se haya jugado
+  if (match.status === "programada") {
+    const ahora = new Date();
+    const kickoff = new Date(match.kickoff_at);
+    if (kickoff > ahora) {
+      return {
+        ok: false,
+        error: "El partido todavía no se jugó. Esperá a la hora del partido.",
+      };
+    }
   }
 
   // 1. Borrar items anteriores (por si se re-edita)
