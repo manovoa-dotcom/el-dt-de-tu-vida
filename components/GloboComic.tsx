@@ -37,10 +37,8 @@ export default function GloboComic({
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
 
-   // Detectar posición del target
+    // Detectar posición del target
   useEffect(() => {
-    setPosicionado(false);
-
     if (!targetId) {
       setTargetRect(null);
       setPosicionado(true);
@@ -48,38 +46,49 @@ export default function GloboComic({
     }
 
     let cancelado = false;
+    let encontrado = false;
 
     const actualizar = () => {
-      if (cancelado) return;
+      if (cancelado || encontrado) return;
       const el = document.getElementById(targetId);
       if (el) {
+        encontrado = true;
         setTargetRect(el.getBoundingClientRect());
         setPosicionado(true);
       }
     };
 
+    // Intento inmediato + reintentos
     actualizar();
-    // Repetir por si el elemento aún no cargó
-    const t1 = setTimeout(actualizar, 100);
-    const t2 = setTimeout(actualizar, 400);
+    const t1 = setTimeout(actualizar, 50);
+    const t2 = setTimeout(actualizar, 150);
+    const t3 = setTimeout(actualizar, 400);
 
-    // Si después de 800ms el target no existe, mostramos el globo centrado
+    // Fallback: solo si después de 1.2s NO se encontró el target
     const fallback = setTimeout(() => {
-      if (cancelado) return;
+      if (cancelado || encontrado) return;
       setTargetRect(null);
       setPosicionado(true);
-    }, 800);
+    }, 1200);
 
-    window.addEventListener("resize", actualizar);
-    window.addEventListener("scroll", actualizar, true);
+    // Reposicionar si el usuario hace scroll o cambia el tamaño
+    const onScroll = () => {
+      if (cancelado || !encontrado) return;
+      const el = document.getElementById(targetId);
+      if (el) setTargetRect(el.getBoundingClientRect());
+    };
+
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("scroll", onScroll, true);
 
     return () => {
       cancelado = true;
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
       clearTimeout(fallback);
-      window.removeEventListener("resize", actualizar);
-      window.removeEventListener("scroll", actualizar, true);
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [targetId, pasoActual]);
 
