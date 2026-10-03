@@ -193,13 +193,20 @@ export default async function InicioPage() {
           </Link>
         </div>
          
-<div className="mt-2 flex items-center gap-4">
+        <div className="mt-2 flex items-center gap-4">
           <Link
             href="/como-se-juega"
             className="inline-flex items-center gap-1 text-xs no-underline"
             style={{ color: "var(--gold)" }}
           >
             ❓ Cómo se juega
+          </Link>
+          <Link
+            href="/elecciones"
+            className="inline-flex items-center gap-1 text-xs no-underline"
+            style={{ color: "var(--gold)" }}
+          >
+            🗳️ Elecciones
           </Link>
           <BotonAyuda />
           <Link
@@ -210,7 +217,6 @@ export default async function InicioPage() {
             📋 Historial
           </Link>
         </div>
-
       </header>
 
       {proximo ? (

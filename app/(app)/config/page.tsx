@@ -29,7 +29,15 @@ export default async function ConfigPage() {
     );
   }
 
-  const opciones = [
+   type Opcion = {
+    href: string;
+    icon: string;
+    title: string;
+    sub: string;
+    disabled?: boolean;
+  };
+
+ const opciones: Opcion[] = [
     {
       href: "/config/partido",
       icon: "📅",
@@ -37,10 +45,10 @@ export default async function ConfigPage() {
       sub: "Fecha, hora, lugar, cupo y presupuesto",
     },
     {
-  href: "/config/plantel",
-  icon: "👥",
-  title: "Plantel y cuentas",
-  sub: "Aprobar, suspender, dar de baja, agregar invitados",
+      href: "/config/plantel",
+      icon: "👥",
+      title: "Plantel y cuentas",
+      sub: "Aprobar, suspender, dar de baja, agregar invitados",
     },
     {
       href: "/config/items",
@@ -65,7 +73,6 @@ export default async function ConfigPage() {
       icon: "🗳️",
       title: "Elecciones de admins",
       sub: "Llamar a elecciones para titular y suplente",
-      disabled: true,
     },
     {
       href: "/config/suspender",
