@@ -72,7 +72,6 @@ export default async function ConfigPage() {
       icon: "⏸️",
       title: "Suspender fecha",
       sub: "Anula equipos armados · no cambia cotizaciones",
-      disabled: true,
     },
     {
       href: "/config/cierre",
