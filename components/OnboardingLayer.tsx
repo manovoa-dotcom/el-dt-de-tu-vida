@@ -19,7 +19,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   const [activo, setActivo] = useState(false);
   const [pasoIdx, setPasoIdx] = useState(0);
 
-  // Verificar si hay que arrancar automáticamente
+  // Arranque automático la primera vez
   useEffect(() => {
     if (typeof window === "undefined") return;
     const visto = localStorage.getItem(ONBOARDING_STORAGE_KEY);
@@ -29,7 +29,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     }
   }, []);
 
-  // Escuchar el evento para reabrir desde el botón de ayuda
+  // Reabrir desde el botón "Ayuda"
   useEffect(() => {
     const handler = () => {
       setPasoIdx(0);
@@ -46,7 +46,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     setActivo(false);
   }, []);
 
-  // Filtrar los pasos según disponibilidad
+  // Filtrar pasos según disponibilidad
   const pasosDisponibles = PASOS_ONBOARDING.filter((p) => {
     if (p.requierePartidoJugado && !hayPartidoJugado) return false;
     return true;
@@ -60,52 +60,80 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     return null;
   }
 
-  // Determinar si el paso es de la pantalla actual
-  const esDeEstaPantalla = pathname.startsWith(`/${paso.page}`);
+  const avanzar = () => {
+    if (pasoIdx >= pasosDisponibles.length - 1) terminar();
+    else setPasoIdx(pasoIdx + 1);
+  };
 
-  // Si no es de esta pantalla, mostramos un globo intermedio que invita a navegar
-  if (!esDeEstaPantalla) {
-    const pageBloqueada = paso.page;
-    let pasosEnEstaPagina = 0;
-    for (let i = pasoIdx; i < pasosDisponibles.length; i++) {
-      if (pasosDisponibles[i].page === pageBloqueada) pasosEnEstaPagina++;
-      else break;
-    }
+  const retroceder = () => setPasoIdx(Math.max(0, pasoIdx - 1));
 
-    // Avanza al siguiente paso, terminando si es el último
-    const avanzarPaso = () => {
-      if (pasoIdx >= pasosDisponibles.length - 1) terminar();
-      else setPasoIdx(pasoIdx + 1);
+  // ─────────────────────────────────────────────────────────────
+  // Paso de tipo "navegacion": globo con botón para ir a otra pantalla
+  // ─────────────────────────────────────────────────────────────
+  if (paso.tipo === "navegacion") {
+    const destino = paso.destino ?? "inicio";
+    const nombreDestino: Record<string, string> = {
+      inicio: "Inicio",
+      convocatoria: "Convocatoria",
+      resultados: "Resultados",
     };
+    const yaEstoyAca = pathname.startsWith(`/${destino}`);
 
-    // Navega a la página y avanza
     const irYAvanzar = () => {
-      router.push(`/${paso.page}`);
-      avanzarPaso();
-    };
-
-    // Saltea todos los pasos de esta página
-    const saltarTodosDeEstaPagina = () => {
-      let idx = pasoIdx;
-      while (
-        idx < pasosDisponibles.length &&
-        pasosDisponibles[idx].page === pageBloqueada
-      ) {
-        idx++;
+      if (!yaEstoyAca) {
+        router.push(`/${destino}`);
       }
-      if (idx >= pasosDisponibles.length) terminar();
-      else setPasoIdx(idx);
+      // Si ya estoy acá, solo avanzo
+      setTimeout(() => avanzar(), 50);
     };
 
     return (
-      <GloboNavegacion
-        paso={paso}
+      <GloboComic
         pasoActual={pasoIdx}
         totalPasos={pasosDisponibles.length}
-        pasosEnEstaPagina={pasosEnEstaPagina}
-        onIr={irYAvanzar}
-        onSaltar={saltarTodosDeEstaPagina}
-        onPrev={() => setPasoIdx(Math.max(0, pasoIdx - 1))}
+        titulo={paso.tituloNavegacion ?? `Vamos a ${nombreDestino[destino]}`}
+        texto={paso.textoNavegacion ?? ""}
+        targetId={yaEstoyAca ? null : "onboarding-tabbar"}
+        posicion={yaEstoyAca ? "centro" : "arriba"}
+        botonSiguiente={
+          yaEstoyAca
+            ? "Siguiente →"
+            : paso.botonNavegacion ?? `Ir a ${nombreDestino[destino]} →`
+        }
+        onNext={irYAvanzar}
+        onPrev={retroceder}
+        onSkip={terminar}
+      />
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Paso de tipo "info": globo que apunta a un elemento
+  // Si el paso es de otra pantalla, espera a que el usuario navegue
+  // ─────────────────────────────────────────────────────────────
+  const esDeEstaPantalla = pathname.startsWith(`/${paso.page}`);
+
+  if (!esDeEstaPantalla) {
+    // El paso es de otra pantalla. Mostramos un aviso de "andá a X".
+    // Esto solo pasa si el usuario salteó el paso de navegación previo.
+    const nombrePagina: Record<string, string> = {
+      inicio: "Inicio",
+      convocatoria: "Convocatoria",
+      resultados: "Resultados",
+    };
+    const nombre = nombrePagina[paso.page ?? "inicio"];
+
+    return (
+      <GloboComic
+        pasoActual={pasoIdx}
+        totalPasos={pasosDisponibles.length}
+        titulo={`Andá a ${nombre}`}
+        texto={`Este paso se muestra en la pestaña "${nombre}". Andá ahí con la barra de abajo y continuamos.`}
+        targetId="onboarding-tabbar"
+        posicion="arriba"
+        botonSiguiente="Saltar este paso →"
+        onNext={avanzar}
+        onPrev={retroceder}
         onSkip={terminar}
       />
     );
@@ -115,75 +143,14 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     <GloboComic
       pasoActual={pasoIdx}
       totalPasos={pasosDisponibles.length}
-      titulo={paso.titulo}
-      texto={paso.texto}
-      targetId={paso.target}
-      posicion={paso.posicion}
+      titulo={paso.titulo ?? ""}
+      texto={paso.texto ?? ""}
+      targetId={paso.target ?? null}
+      posicion={paso.posicion ?? "centro"}
       botonSiguiente={paso.botonSiguiente}
-      onNext={() => {
-        if (pasoIdx === pasosDisponibles.length - 1) terminar();
-        else setPasoIdx(pasoIdx + 1);
-      }}
-      onPrev={() => setPasoIdx(Math.max(0, pasoIdx - 1))}
+      onNext={avanzar}
+      onPrev={retroceder}
       onSkip={terminar}
-    />
-  );
-}
-
-// ────────────────────────────────────────────────────────────────
-// Globo intermedio (cuando el paso es de otra pantalla)
-// ────────────────────────────────────────────────────────────────
-
-function GloboNavegacion({
-  paso,
-  pasoActual,
-  totalPasos,
-  pasosEnEstaPagina,
-  onIr,
-  onSaltar,
-  onPrev,
-  onSkip,
-}: {
-  paso: PasoOnboarding;
-  pasoActual: number;
-  totalPasos: number;
-  pasosEnEstaPagina: number;
-  onIr: () => void;
-  onSaltar: () => void;
-  onPrev: () => void;
-  onSkip: () => void;
-}) {
-  const nombrePagina: Record<string, string> = {
-    inicio: "Inicio",
-    convocatoria: "Convocatoria",
-    resultados: "Resultados",
-  };
-
-  const nombre = nombrePagina[paso.page] ?? paso.page;
-  const texto =
-    pasosEnEstaPagina > 1
-      ? `El tutorial continúa en "${nombre}" con ${pasosEnEstaPagina} pasos.\n\nTocá "Ir a ${nombre}" y seguimos ahí. O si preferís, andá vos mismo con la barra de abajo.`
-      : `El tutorial continúa en "${nombre}".\n\nTocá "Ir a ${nombre}" y seguimos ahí. O si preferís, andá vos mismo con la barra de abajo.`;
-
-  return (
-    <GloboComic
-      pasoActual={pasoActual}
-      totalPasos={totalPasos}
-      titulo={`Vamos a ${nombre}`}
-      texto={texto}
-      targetId="onboarding-tabbar"
-      posicion="arriba"
-      botonSiguiente={`Ir a ${nombre} →`}
-      onNext={onIr}
-      onPrev={onPrev}
-      onSkip={onSkip}
-      linkSecundario={{
-        label:
-          pasosEnEstaPagina > 1
-            ? `Saltar los ${pasosEnEstaPagina} pasos`
-            : "Saltar este paso",
-        onClick: onSaltar,
-      }}
     />
   );
 }
