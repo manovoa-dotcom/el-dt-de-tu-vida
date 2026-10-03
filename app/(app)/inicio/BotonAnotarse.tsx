@@ -87,15 +87,15 @@ export default function BotonAnotarse({
         </div>
       )}
 
-      <Link
+            <Link
         href="/convocatoria"
-        className="mt-2 block text-center text-xs font-medium no-underline"
-        style={{ color: "var(--gold)" }}
+        className="mt-2 block w-full rounded-xl py-3 text-center text-sm font-bold no-underline transition"
+        style={{ background: "var(--or)", color: "#fff" }}
       >
         Ver convocatoria y armar equipo →
       </Link>
 
-      <div className="mt-1 text-center text-[10px]" style={{ color: "var(--dim)" }}>
+      <div className="mt-2 text-center text-[10px]" style={{ color: "var(--dim)" }}>
         {anotadosCount} de {cupo} anotados
         {completo && " · completo"}
       </div>
