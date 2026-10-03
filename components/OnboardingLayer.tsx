@@ -18,6 +18,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   const router = useRouter();
   const [activo, setActivo] = useState(false);
   const [pasoIdx, setPasoIdx] = useState(0);
+  const [esperandoDestino, setEsperandoDestino] = useState<string | null>(null);
 
   // Arranque automático la primera vez
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   useEffect(() => {
     const handler = () => {
       setPasoIdx(0);
+      setEsperandoDestino(null);
       setActivo(true);
     };
     window.addEventListener("onboarding:start", handler);
@@ -52,6 +54,30 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     return true;
   });
 
+  const avanzar = useCallback(() => {
+    setPasoIdx((prev) => {
+      if (prev >= pasosDisponibles.length - 1) {
+        terminar();
+        return prev;
+      }
+      return prev + 1;
+    });
+  }, [pasosDisponibles.length, terminar]);
+
+  const retroceder = () => {
+    setEsperandoDestino(null);
+    setPasoIdx((prev) => Math.max(0, prev - 1));
+  };
+
+  // Detectar cuando el pathname coincide con el destino esperado → avanzar
+  useEffect(() => {
+    if (!esperandoDestino) return;
+    if (pathname.startsWith(`/${esperandoDestino}`)) {
+      setEsperandoDestino(null);
+      avanzar();
+    }
+  }, [pathname, esperandoDestino, avanzar]);
+
   if (!activo) return null;
 
   const paso = pasosDisponibles[pasoIdx];
@@ -60,15 +86,8 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     return null;
   }
 
-  const avanzar = () => {
-    if (pasoIdx >= pasosDisponibles.length - 1) terminar();
-    else setPasoIdx(pasoIdx + 1);
-  };
-
-  const retroceder = () => setPasoIdx(Math.max(0, pasoIdx - 1));
-
   // ─────────────────────────────────────────────────────────────
-  // Paso de tipo "navegacion": globo con botón para ir a otra pantalla
+  // Paso de tipo "navegacion"
   // ─────────────────────────────────────────────────────────────
   if (paso.tipo === "navegacion") {
     const destino = paso.destino ?? "inicio";
@@ -78,13 +97,15 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
       resultados: "Resultados",
     };
     const yaEstoyAca = pathname.startsWith(`/${destino}`);
+    const esperando = esperandoDestino === destino;
 
-    const irYAvanzar = () => {
-      if (!yaEstoyAca) {
+    const irAlDestino = () => {
+      if (yaEstoyAca) {
+        avanzar();
+      } else {
+        setEsperandoDestino(destino);
         router.push(`/${destino}`);
       }
-      // Si ya estoy acá, solo avanzo
-      setTimeout(() => avanzar(), 50);
     };
 
     return (
@@ -96,11 +117,11 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
         targetId={yaEstoyAca ? null : "onboarding-tabbar"}
         posicion={yaEstoyAca ? "centro" : "arriba"}
         botonSiguiente={
-          yaEstoyAca
-            ? "Siguiente →"
+          esperando
+            ? "Navegando…"
             : paso.botonNavegacion ?? `Ir a ${nombreDestino[destino]} →`
         }
-        onNext={irYAvanzar}
+        onNext={irAlDestino}
         onPrev={retroceder}
         onSkip={terminar}
       />
@@ -108,14 +129,13 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Paso de tipo "info": globo que apunta a un elemento
-  // Si el paso es de otra pantalla, espera a que el usuario navegue
+  // Paso de tipo "info"
   // ─────────────────────────────────────────────────────────────
   const esDeEstaPantalla = pathname.startsWith(`/${paso.page}`);
 
   if (!esDeEstaPantalla) {
-    // El paso es de otra pantalla. Mostramos un aviso de "andá a X".
-    // Esto solo pasa si el usuario salteó el paso de navegación previo.
+    // Caso de emergencia: el paso es de otra pantalla sin haber pasado
+    // por un paso de navegación. Se saltea automáticamente.
     const nombrePagina: Record<string, string> = {
       inicio: "Inicio",
       convocatoria: "Convocatoria",
