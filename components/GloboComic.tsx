@@ -12,6 +12,7 @@ type Props = {
   targetId: string | null;
   posicion: Posicion;
   botonSiguiente?: string;
+ centradoX?: boolean;
   onNext: () => void;
   onPrev: () => void;
   onSkip: () => void;
@@ -29,6 +30,7 @@ export default function GloboComic({
   targetId,
   posicion,
   botonSiguiente,
+centradoX = false,
   onNext,
   onPrev,
   onSkip,
@@ -94,10 +96,12 @@ export default function GloboComic({
 
   if (!posicionado) return null;
 
-  // Calcular posición del globo
+   // Calcular posición del globo
   let globoStyle: React.CSSProperties = {};
   let tailDir: Posicion = "abajo";
+  let tailLeftPx: number | null = null;
   const MARGEN = 16;
+  const ANCHO_GLOBO = Math.min(340, window.innerWidth - MARGEN * 2);
 
   if (!targetRect || posicion === "centro") {
     globoStyle = {
@@ -112,11 +116,20 @@ export default function GloboComic({
 
     if (posicion === "arriba") {
       // Globo arriba del target → la cola apunta hacia abajo
+      const leftPx = centradoX
+        ? (window.innerWidth - ANCHO_GLOBO) / 2
+        : Math.max(MARGEN, Math.min(left, window.innerWidth - ANCHO_GLOBO - MARGEN));
+
       globoStyle = {
-        left: Math.max(MARGEN, Math.min(left, window.innerWidth - 340)),
+        left: leftPx,
         bottom: window.innerHeight - top + MARGEN,
-        width: Math.min(340, window.innerWidth - MARGEN * 2),
+        width: ANCHO_GLOBO,
       };
+
+      // Calcular dónde poner la colita para que apunte al centro del target
+      const centroTarget = left + width / 2;
+      tailLeftPx = Math.max(20, Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 44));
+
       tailDir = "abajo";
     } else if (posicion === "abajo") {
       // Globo debajo del target → la cola apunta hacia arriba
@@ -175,20 +188,25 @@ export default function GloboComic({
         style={{ ...globoStyle }}
       >
         {/* Cola */}
-        {tailDir !== "centro" && (
+                {tailDir !== "centro" && (
           <div
             className="absolute"
             style={{
               ...(tailDir === "abajo" && {
-                left: targetRect
-                  ? Math.max(
-                      20,
-                      Math.min(
-                        targetRect.left + targetRect.width / 2 - (globoStyle.left as number),
-                        (globoStyle.width as number) - 40
+                left:
+                  tailLeftPx !== null
+                    ? tailLeftPx
+                    : targetRect
+                    ? Math.max(
+                        20,
+                        Math.min(
+                          targetRect.left +
+                            targetRect.width / 2 -
+                            ((globoStyle.left as number) || 0),
+                          ((globoStyle.width as number) || 340) - 40
+                        )
                       )
-                    )
-                  : "50%",
+                    : "50%",
                 bottom: -22,
                 width: 0,
                 height: 0,

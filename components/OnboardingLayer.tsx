@@ -108,19 +108,24 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
       }
     };
 
+        const targetNavegacion =
+      paso.targetNavegacion ?? "onboarding-tabbar";
+    const centrado = paso.centradoNavegacion ?? false;
+
     return (
       <GloboComic
         pasoActual={pasoIdx}
         totalPasos={pasosDisponibles.length}
         titulo={paso.tituloNavegacion ?? `Vamos a ${nombreDestino[destino]}`}
         texto={paso.textoNavegacion ?? ""}
-        targetId={yaEstoyAca ? null : "onboarding-tabbar"}
+        targetId={yaEstoyAca ? null : targetNavegacion}
         posicion={yaEstoyAca ? "centro" : "arriba"}
         botonSiguiente={
           esperando
             ? "Navegando…"
             : paso.botonNavegacion ?? `Ir a ${nombreDestino[destino]} →`
         }
+        centradoX={centrado}
         onNext={irAlDestino}
         onPrev={retroceder}
         onSkip={terminar}
@@ -159,7 +164,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     );
   }
 
-  return (
+    return (
     <GloboComic
       pasoActual={pasoIdx}
       totalPasos={pasosDisponibles.length}
@@ -168,6 +173,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
       targetId={paso.target ?? null}
       posicion={paso.posicion ?? "centro"}
       botonSiguiente={paso.botonSiguiente}
+      centradoX={paso.centradoX ?? false}
       onNext={avanzar}
       onPrev={retroceder}
       onSkip={terminar}

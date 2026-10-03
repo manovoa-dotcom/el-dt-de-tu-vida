@@ -20,12 +20,15 @@ export type PasoOnboarding = {
   texto?: string;
   botonSiguiente?: string;
   requierePartidoJugado?: boolean;
+  centradoX?: boolean;
 
   // ─── Para tipo "navegacion" ───
   destino?: "inicio" | "convocatoria" | "resultados";
   tituloNavegacion?: string;
   textoNavegacion?: string;
   botonNavegacion?: string;
+  targetNavegacion?: string;
+  centradoNavegacion?: boolean;
 };
 
 export const PASOS_ONBOARDING: PasoOnboarding[] = [
@@ -102,7 +105,7 @@ export const PASOS_ONBOARDING: PasoOnboarding[] = [
   },
 
   // ─── Paso 7: Navegación a Resultados (solo si hay partido jugado) ───
-  {
+    {
     id: "nav-resultados",
     tipo: "navegacion",
     destino: "resultados",
@@ -110,6 +113,8 @@ export const PASOS_ONBOARDING: PasoOnboarding[] = [
     textoNavegacion:
       "Cuando se juegue, el admin carga los resultados y ves los puntos acá.\n\nSumás por goles, atajadas y todo lo que hagan tus jugadores.\n\n¡Que gane el mejor DT!",
     botonNavegacion: "Ir a Resultados →",
+    targetNavegacion: "onboarding-tab-resultados",
+    centradoNavegacion: true,
     requierePartidoJugado: true,
   },
 ];
