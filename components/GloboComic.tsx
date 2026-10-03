@@ -37,15 +37,20 @@ export default function GloboComic({
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
 
-  // Detectar posición del target
+   // Detectar posición del target
   useEffect(() => {
+    setPosicionado(false);
+
     if (!targetId) {
       setTargetRect(null);
       setPosicionado(true);
       return;
     }
 
+    let cancelado = false;
+
     const actualizar = () => {
+      if (cancelado) return;
       const el = document.getElementById(targetId);
       if (el) {
         setTargetRect(el.getBoundingClientRect());
@@ -58,12 +63,21 @@ export default function GloboComic({
     const t1 = setTimeout(actualizar, 100);
     const t2 = setTimeout(actualizar, 400);
 
+    // Si después de 800ms el target no existe, mostramos el globo centrado
+    const fallback = setTimeout(() => {
+      if (cancelado) return;
+      setTargetRect(null);
+      setPosicionado(true);
+    }, 800);
+
     window.addEventListener("resize", actualizar);
     window.addEventListener("scroll", actualizar, true);
 
     return () => {
+      cancelado = true;
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(fallback);
       window.removeEventListener("resize", actualizar);
       window.removeEventListener("scroll", actualizar, true);
     };
