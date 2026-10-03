@@ -75,11 +75,10 @@ export default async function ConfigPage() {
       disabled: true,
     },
     {
-      href: "/config/cerrar",
+      href: "/config/cierre",
       icon: "🏁",
-      title: "Cerrar temporada",
-      sub: "Resumen del año, presentismo sorpresa y respaldo",
-      disabled: true,
+      title: "Cierre de temporada",
+      sub: "Resumen del año, campeón, salón de la fama",
     },
     {
       href: "/config/correcciones",
