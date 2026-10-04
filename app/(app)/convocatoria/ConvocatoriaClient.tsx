@@ -27,7 +27,6 @@ type Props = {
   lugar: string | null;
   miEquipo: MiPick[];
   equiposBloqueados: boolean;
-  convocatoriaAunNoAbierta: boolean;
   presupuesto: number | null;
 };
 
@@ -46,7 +45,6 @@ export default function ConvocatoriaClient({
   lugar,
   miEquipo,
   equiposBloqueados,
-  convocatoriaAunNoAbierta,
   presupuesto,
 }: Props) {
 
@@ -338,8 +336,7 @@ export default function ConvocatoriaClient({
 
   // Texto del indicador de guardado
   let textoEstado = "";
-if (convocatoriaAunNoAbierta) textoEstado = "🔒 Convocatoria no abierta";
-else if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
+  if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
   else if (estadoGuardado === "guardando") textoEstado = "Guardando...";
   else if (estadoGuardado === "guardado") textoEstado = "✓ Guardado";
   else if (estadoGuardado === "error") textoEstado = `⚠ ${errorGuardado}`;
@@ -1001,13 +998,14 @@ function FilaNoAnotado({ c }: { c: Fila }) {
   const colorRacha =
     racha >= 5 ? "var(--red)" : racha >= 3 ? "var(--or)" : "var(--gold)";
 
-  return (
+   return (
     <div
+      id={c.is_me ? "onboarding-botones-ts" : undefined}
       className="flex items-center gap-3 px-4 py-2"
       style={{
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         background: c.is_me
-          ? "linear-gradient(90deg, rgba(242,182,50,0.1), transparent)"
+          ? "linear-gradient(90deg, rgba(242,182,50,0.15), transparent)"
           : undefined,
       }}
     >

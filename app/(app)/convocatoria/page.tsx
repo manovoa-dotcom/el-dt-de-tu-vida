@@ -233,10 +233,8 @@ export default async function ConvocatoriaPage() {
   const bajaCloses = new Date(partido.baja_closes_at);
 
   const ahora = new Date();
-  const abre = new Date(partido.convocatoria_opens_at);
   const cierra = new Date(partido.teams_lock_at);
-  const equiposBloqueados = ahora < abre || ahora >= cierra;
-  const convocatoriaAunNoAbierta = ahora < abre;
+  const equiposBloqueados = ahora >= cierra;
 
   return (
     <div>
@@ -250,7 +248,7 @@ export default async function ConvocatoriaPage() {
         </p>
       </header>
 
-        <ConvocatoriaClient
+            <ConvocatoriaClient
         matchId={partido.id}
         cupo={partido.cupo}
         anotadosCount={anotadosCount}
@@ -262,7 +260,6 @@ export default async function ConvocatoriaPage() {
         lugar={partido.place}
         miEquipo={miEquipo}
         equiposBloqueados={equiposBloqueados}
-        convocatoriaAunNoAbierta={convocatoriaAunNoAbierta}
         presupuesto={partido.budget}
       />
 

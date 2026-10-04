@@ -43,13 +43,9 @@ export async function guardarEquipo(
     return { ok: false, error: "El partido no está abierto" };
   }
 
-  const ahora = new Date();
-  const abre = new Date(match.convocatoria_opens_at);
+    const ahora = new Date();
   const cierra = new Date(match.teams_lock_at);
 
-  if (ahora < abre) {
-    return { ok: false, error: "La convocatoria todavía no abrió" };
-  }
   if (ahora >= cierra) {
     return { ok: false, error: "El armado de equipos ya cerró" };
   }
