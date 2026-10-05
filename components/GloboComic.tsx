@@ -12,7 +12,7 @@ type Props = {
   targetId: string | null;
   posicion: Posicion;
   botonSiguiente?: string;
- centradoX?: boolean;
+  centradoX?: boolean;
   onNext: () => void;
   onPrev: () => void;
   onSkip: () => void;
@@ -30,7 +30,7 @@ export default function GloboComic({
   targetId,
   posicion,
   botonSiguiente,
-centradoX = false,
+  centradoX = false,
   onNext,
   onPrev,
   onSkip,
@@ -39,7 +39,7 @@ centradoX = false,
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
 
-    // Detectar posición del target
+  // Detectar posición del target
   useEffect(() => {
     if (!targetId) {
       setTargetRect(null);
@@ -60,20 +60,17 @@ centradoX = false,
       }
     };
 
-    // Intento inmediato + reintentos
     actualizar();
     const t1 = setTimeout(actualizar, 50);
     const t2 = setTimeout(actualizar, 150);
     const t3 = setTimeout(actualizar, 400);
 
-    // Fallback: solo si después de 1.2s NO se encontró el target
     const fallback = setTimeout(() => {
       if (cancelado || encontrado) return;
       setTargetRect(null);
       setPosicionado(true);
     }, 1200);
 
-    // Reposicionar si el usuario hace scroll o cambia el tamaño
     const onScroll = () => {
       if (cancelado || !encontrado) return;
       const el = document.getElementById(targetId);
@@ -96,12 +93,15 @@ centradoX = false,
 
   if (!posicionado) return null;
 
-   // Calcular posición del globo
+  // ─── Cálculos de posición ───
+  const MARGEN = 12;
+  const ANCHO_GLOBO = Math.min(340, window.innerWidth - MARGEN * 2);
+  const ALTO_ESTIMADO = 280; // aproximado para evitar desborde
+
   let globoStyle: React.CSSProperties = {};
   let tailDir: Posicion = "abajo";
   let tailLeftPx: number | null = null;
-  const MARGEN = 16;
-  const ANCHO_GLOBO = Math.min(340, window.innerWidth - MARGEN * 2);
+  let tailTopPx: number | null = null;
 
   if (!targetRect || posicion === "centro") {
     globoStyle = {
@@ -115,45 +115,92 @@ centradoX = false,
     const { top, left, width, height, bottom, right } = targetRect;
 
     if (posicion === "arriba") {
-      // Globo arriba del target → la cola apunta hacia abajo
+      // Globo arriba del target, colita apunta hacia abajo
       const leftPx = centradoX
         ? (window.innerWidth - ANCHO_GLOBO) / 2
-        : Math.max(MARGEN, Math.min(left, window.innerWidth - ANCHO_GLOBO - MARGEN));
+        : Math.max(
+            MARGEN,
+            Math.min(
+              left + width / 2 - ANCHO_GLOBO / 2,
+              window.innerWidth - ANCHO_GLOBO - MARGEN
+            )
+          );
 
       globoStyle = {
         left: leftPx,
-        bottom: window.innerHeight - top + MARGEN,
+        bottom: Math.max(MARGEN, window.innerHeight - top + 14),
         width: ANCHO_GLOBO,
       };
 
-      // Calcular dónde poner la colita para que apunte al centro del target
       const centroTarget = left + width / 2;
-      tailLeftPx = Math.max(20, Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 44));
+      tailLeftPx = Math.max(
+        24,
+        Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 48)
+      );
 
       tailDir = "abajo";
     } else if (posicion === "abajo") {
-      // Globo debajo del target → la cola apunta hacia arriba
+      // Globo debajo del target, colita apunta hacia arriba
+      const leftPx = centradoX
+        ? (window.innerWidth - ANCHO_GLOBO) / 2
+        : Math.max(
+            MARGEN,
+            Math.min(
+              left + width / 2 - ANCHO_GLOBO / 2,
+              window.innerWidth - ANCHO_GLOBO - MARGEN
+            )
+          );
+
+      // Limitar la altura para que no se salga por abajo
+      const topPx = Math.min(bottom + 14, window.innerHeight - ALTO_ESTIMADO - MARGEN);
+
       globoStyle = {
-        left: Math.max(MARGEN, Math.min(left, window.innerWidth - 340)),
-        top: bottom + MARGEN,
-        width: Math.min(340, window.innerWidth - MARGEN * 2),
+        left: leftPx,
+        top: Math.max(MARGEN, topPx),
+        width: ANCHO_GLOBO,
       };
+
+      const centroTarget = left + width / 2;
+      tailLeftPx = Math.max(
+        24,
+        Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 48)
+      );
+
       tailDir = "arriba";
     } else if (posicion === "izquierda") {
-      // Globo a la izquierda del target → la cola apunta hacia la derecha
+      // Globo a la izquierda del target, colita apunta a la derecha
+      const rightPx = window.innerWidth - left + 14;
+      const topPx = Math.max(
+        MARGEN,
+        Math.min(top + height / 2 - 60, window.innerHeight - ALTO_ESTIMADO - MARGEN)
+      );
+
       globoStyle = {
-        right: window.innerWidth - left + MARGEN,
-        top: Math.max(MARGEN, top - 40),
-        width: Math.min(340, window.innerWidth - MARGEN * 2),
+        right: rightPx,
+        top: topPx,
+        width: ANCHO_GLOBO,
       };
+
+      tailTopPx = 40;
       tailDir = "derecha";
     } else {
       // derecha
+      const leftPx = Math.max(
+        MARGEN,
+        Math.min(right + 14, window.innerWidth - ANCHO_GLOBO - MARGEN)
+      );
+      const topPx = Math.max(
+        MARGEN,
+        Math.min(top + height / 2 - 60, window.innerHeight - ALTO_ESTIMADO - MARGEN)
+      );
+
       globoStyle = {
-        left: right + MARGEN,
-        top: Math.max(MARGEN, top - 40),
-        width: Math.min(340, window.innerWidth - MARGEN * 2),
+        left: leftPx,
+        top: topPx,
+        width: ANCHO_GLOBO,
       };
+
+      tailTopPx = 40;
       tailDir = "izquierda";
     }
   }
@@ -187,73 +234,46 @@ centradoX = false,
         className="globo-aparecer fixed z-[92]"
         style={{ ...globoStyle }}
       >
-        {/* Cola */}
-                {tailDir !== "centro" && (
+        {/* Colita blanca con borde negro (solo en 2 lados) */}
+        {tailDir !== "centro" && (
           <div
             className="absolute"
             style={{
+              width: 24,
+              height: 24,
+              background: "#fff",
+              transform: "rotate(45deg)",
               ...(tailDir === "abajo" && {
                 left:
-                  tailLeftPx !== null
-                    ? tailLeftPx
-                    : targetRect
-                    ? Math.max(
-                        20,
-                        Math.min(
-                          targetRect.left +
-                            targetRect.width / 2 -
-                            ((globoStyle.left as number) || 0),
-                          ((globoStyle.width as number) || 340) - 40
-                        )
-                      )
-                    : "50%",
-                bottom: -22,
-                width: 0,
-                height: 0,
-                borderLeft: "12px solid transparent",
-                borderRight: "12px solid transparent",
-                borderTop: "24px solid #000",
+                  tailLeftPx !== null ? tailLeftPx : "50%",
+                bottom: -14,
+                borderRight: "3px solid #000",
+                borderBottom: "3px solid #000",
               }),
               ...(tailDir === "arriba" && {
-                left: targetRect
-                  ? Math.max(
-                      20,
-                      Math.min(
-                        targetRect.left + targetRect.width / 2 - (globoStyle.left as number),
-                        (globoStyle.width as number) - 40
-                      )
-                    )
-                  : "50%",
-                top: -22,
-                width: 0,
-                height: 0,
-                borderLeft: "12px solid transparent",
-                borderRight: "12px solid transparent",
-                borderBottom: "24px solid #000",
+                left:
+                  tailLeftPx !== null ? tailLeftPx : "50%",
+                top: -14,
+                borderLeft: "3px solid #000",
+                borderTop: "3px solid #000",
               }),
               ...(tailDir === "derecha" && {
-                right: -22,
-                top: 30,
-                width: 0,
-                height: 0,
-                borderTop: "12px solid transparent",
-                borderBottom: "12px solid transparent",
-                borderLeft: "24px solid #000",
+                right: -14,
+                top: tailTopPx !== null ? tailTopPx : 40,
+                borderTop: "3px solid #000",
+                borderRight: "3px solid #000",
               }),
               ...(tailDir === "izquierda" && {
-                left: -22,
-                top: 30,
-                width: 0,
-                height: 0,
-                borderTop: "12px solid transparent",
-                borderBottom: "12px solid transparent",
-                borderRight: "24px solid #000",
+                left: -14,
+                top: tailTopPx !== null ? tailTopPx : 40,
+                borderBottom: "3px solid #000",
+                borderLeft: "3px solid #000",
               }),
             }}
           />
         )}
 
-        {/* Cuerpo del globo con efecto cómic */}
+        {/* Cuerpo del globo */}
         <div
           className="globo-flotar relative"
           style={{
@@ -342,8 +362,7 @@ centradoX = false,
             </button>
           </div>
 
-          {/* Saltar */}
-                   {/* Link secundario (opcional) */}
+          {/* Link secundario */}
           {linkSecundario && (
             <button
               type="button"
@@ -355,7 +374,7 @@ centradoX = false,
             </button>
           )}
 
-          {/* Saltar tutorial completo */}
+          {/* Saltar tutorial */}
           <button
             type="button"
             onClick={onSkip}
