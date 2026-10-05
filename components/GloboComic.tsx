@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Posicion = "arriba" | "abajo" | "izquierda" | "derecha" | "centro";
 
@@ -36,8 +36,10 @@ export default function GloboComic({
   onSkip,
   linkSecundario,
 }: Props) {
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
+  const [altoGlobo, setAltoGlobo] = useState(280);
+  const globoRef = useRef<HTMLDivElement>(null);
 
   // Detectar posición del target
   useEffect(() => {
