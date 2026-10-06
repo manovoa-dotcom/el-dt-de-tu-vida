@@ -29,8 +29,9 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
     [grupo]
   );
 
-  const [form, setForm] = useState(inicial);
+   const [form, setForm] = useState(inicial);
   const [guardado, setGuardado] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const hayCambios = useMemo(() => {
     return (
@@ -107,7 +108,7 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
           }}
         />
 
-        {linkInvite && (
+               {linkInvite && (
           <div className="mt-3">
             <div
               className="text-[11px] font-semibold uppercase tracking-wider"
@@ -115,17 +116,47 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
             >
               Link de invitación
             </div>
-            <div
-              className="mt-1 truncate rounded-lg px-2 py-1.5 text-[11px]"
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(linkInvite);
+                  setCopiado(true);
+                  setTimeout(() => setCopiado(false), 2000);
+                } catch {
+                  mostrarToast("No se pudo copiar. Copialo a mano.");
+                }
+              }}
+              className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition"
               style={{
-                background: "rgba(255,255,255,0.03)",
-                color: "var(--gold)",
-                fontFamily: "monospace",
+                background: copiado
+                  ? "rgba(242,182,50,0.2)"
+                  : "rgba(255,255,255,0.03)",
+                border: `1px solid ${
+                  copiado ? "rgba(242,182,50,0.5)" : "rgba(255,255,255,0.08)"
+                }`,
               }}
             >
-              {linkInvite}
-            </div>
+              <span
+                className="flex-1 truncate text-[11px]"
+                style={{
+                  color: "var(--gold)",
+                  fontFamily: "monospace",
+                }}
+              >
+                {linkInvite}
+              </span>
+              <span
+                className="flex-none text-[11px] font-bold"
+                style={{ color: copiado ? "var(--gold)" : "var(--dim)" }}
+              >
+                {copiado ? "✓ Copiada" : "📋 Copiar"}
+              </span>
+            </button>
             <p className="mt-1 text-[10px]" style={{ color: "var(--dim)" }}>
+              Tocá el link para copiarlo y pegalo en el chat de WhatsApp.
+            </p>
+            <p className="mt-0.5 text-[10px]" style={{ color: "var(--dim)" }}>
               Código: {grupo.invite_code}
             </p>
           </div>
