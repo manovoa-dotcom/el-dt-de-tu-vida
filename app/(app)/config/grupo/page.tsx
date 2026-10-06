@@ -32,7 +32,7 @@ export default async function ConfigGrupoPage() {
   const { data: grupo } = await supabase
     .from("groups")
       .select(
-      "name, presentismo_value, dt_pick_value, equipo_ideal_value, equipo_ideal_anio_size, invite_code"
+      "name, slug, presentismo_value, dt_pick_value, equipo_ideal_value, equipo_ideal_anio_size, invite_code"
     )
     .eq("id", membership.group_id)
     .single();
@@ -64,9 +64,10 @@ export default async function ConfigGrupoPage() {
         </p>
       </header>
 
-     <ConfigGrupoClient
+           <ConfigGrupoClient
         grupo={{
           name: grupo.name,
+          slug: grupo.slug,
           presentismo_value: grupo.presentismo_value,
           dt_pick_value: grupo.dt_pick_value,
           equipo_ideal_value: grupo.equipo_ideal_value,

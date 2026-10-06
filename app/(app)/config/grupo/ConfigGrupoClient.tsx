@@ -6,6 +6,7 @@ import { guardarConfigGrupo } from "./actions";
 
 type Grupo = {
   name: string;
+ slug: string;
   presentismo_value: number;
   dt_pick_value: number;
   equipo_ideal_value: number;
@@ -62,8 +63,8 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
     });
   }
 
-  const linkInvite = grupo.invite_code
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/unirse/${grupo.name.toLowerCase().replace(/\s+/g, "-")}`
+   const linkInvite = grupo.slug
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/unirse/${grupo.slug}`
     : null;
 
   let textoBoton = "Guardar cambios";
