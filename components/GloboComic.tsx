@@ -117,7 +117,7 @@ export default function GloboComic({
   const VH = window.innerHeight;
   const MARGEN = 12;
   const ANCHO_GLOBO = Math.min(340, VW - MARGEN * 2);
-  const ALTO = Math.min(altoGlobo, VH * 0.75); // nunca más alto que 75% de la pantalla
+    const ALTO = altoGlobo;
 
   // Decidir modo: arriba del target, abajo del target, o centrado
   let modo: "arriba" | "abajo" | "centro" = "centro";
@@ -252,7 +252,7 @@ export default function GloboComic({
         )}
 
         {/* Cuerpo del globo */}
-        <div
+               <div
           ref={globoRef}
           className="globo-flotar relative"
           style={{
@@ -262,8 +262,6 @@ export default function GloboComic({
             padding: "20px 22px 18px",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             ["--rot" as string]: "-1.5deg",
-            maxHeight: ALTO,
-            overflowY: "auto",
           }}
         >
           {/* Progreso */}
@@ -287,23 +285,23 @@ export default function GloboComic({
           </div>
 
           {/* Título */}
-          <div
+                    <div
             className="bangers"
             style={{
-              fontSize: 26,
+              fontSize: 22,
               lineHeight: 1.1,
               color: "#12261c",
-              marginBottom: 6,
+              marginBottom: 5,
             }}
           >
             {titulo}
           </div>
 
           {/* Texto */}
-          <div
+                    <div
             style={{
-              fontSize: 14,
-              lineHeight: 1.4,
+              fontSize: 13,
+              lineHeight: 1.35,
               color: "#1b2a22",
               whiteSpace: "pre-line",
               fontFamily: "Inter, system-ui, sans-serif",
