@@ -89,12 +89,12 @@ export default async function InicioPage() {
     miEstado = miAsistencia?.status ?? null;
   }
 
-  const { data: noticiasRaw } = await supabase
+   const { data: noticiasRaw } = await supabase
     .from("news")
     .select("id, kind, title, body, created_at, author_id")
     .eq("group_id", grupo.id)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(15);
 
   const authorIds = (noticiasRaw ?? [])
     .map((n) => n.author_id)
@@ -320,19 +320,27 @@ export default async function InicioPage() {
       <NoticiaForm />
 
       {noticias.length > 0 ? (
-        noticias.map((n) => (
-          <NoticiaCard
-            key={n.id}
-            newsId={n.id}
-            kind={n.kind}
-            titulo={n.titulo}
-            cuerpo={n.cuerpo}
-            authorAlias={n.authorAlias}
-            authorPhoto={n.authorPhoto}
-            createdAt={n.createdAt}
-            reacciones={n.reacciones}
-          />
-        ))
+        <div
+          className="mt-1 overflow-y-auto"
+          style={{
+            maxHeight: "60vh",
+            paddingRight: 4,
+          }}
+        >
+          {noticias.map((n) => (
+            <NoticiaCard
+              key={n.id}
+              newsId={n.id}
+              kind={n.kind}
+              titulo={n.titulo}
+              cuerpo={n.cuerpo}
+              authorAlias={n.authorAlias}
+              authorPhoto={n.authorPhoto}
+              createdAt={n.createdAt}
+              reacciones={n.reacciones}
+            />
+          ))}
+        </div>
       ) : (
         <div
           className="mx-3 mt-3 rounded-2xl p-5 text-center text-sm"
@@ -341,7 +349,6 @@ export default async function InicioPage() {
           Todavía no hay novedades.
         </div>
       )}
-
       <div className="h-8" />
 
       <MarcarComoLeidas />

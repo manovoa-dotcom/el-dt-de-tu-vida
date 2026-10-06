@@ -49,9 +49,14 @@ id="onboarding-tabbar"
           const active = pathname.startsWith(t.href);
           const mostrarBadge = t.href === "/inicio" && badgeInicio > 0;
           return (
-            <Link
+                        <Link
               key={t.href}
               href={t.href}
+              id={
+                t.href === "/resultados"
+                  ? "onboarding-tab-resultados"
+                  : undefined
+              }
               className="relative flex-1 py-2 text-center no-underline transition"
               style={{ color: active ? "var(--gold)" : "var(--dim)" }}
             >

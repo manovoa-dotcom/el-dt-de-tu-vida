@@ -109,7 +109,6 @@ export default function CierreClient({
         </div>
       )}
 
-      {/* ─── Estado actual ─── */}
       {temporadaActiva ? (
         <div
           className="rounded-2xl p-5"
@@ -239,15 +238,10 @@ export default function CierreClient({
         </div>
       )}
 
-      {/* ─── Último cierre ─── */}
       {historial.length > 0 && historial[0].resumen_cierre && (
-        <ResumenCierreUI
-          temporada={historial[0]}
-          esUltima
-        />
+        <ResumenCierreUI temporada={historial[0]} esUltima />
       )}
 
-      {/* ─── Salón de la fama ─── */}
       {historial.length > 1 && (
         <>
           <div className="bebas mt-6 px-1 text-xl tracking-wider">
@@ -294,10 +288,6 @@ export default function CierreClient({
   );
 }
 
-// ────────────────────────────────────────────────────────────────
-// Resumen del cierre
-// ────────────────────────────────────────────────────────────────
-
 function ResumenCierreUI({
   temporada,
   esUltima,
@@ -317,7 +307,6 @@ function ResumenCierreUI({
         {r.fechas_jugadas} fechas jugadas
       </p>
 
-      {/* Podio */}
       {r.podio.length > 0 && (
         <div
           className="mt-3 rounded-2xl p-4"
@@ -360,7 +349,6 @@ function ResumenCierreUI({
         </div>
       )}
 
-      {/* Equipo Ideal del Año */}
       {r.equipo_ideal.jugadores.length > 0 && (
         <>
           <div className="bebas mt-4 px-1 text-lg tracking-wider">
@@ -410,7 +398,6 @@ function ResumenCierreUI({
         </>
       )}
 
-      {/* Premios */}
       <div className="bebas mt-4 px-1 text-lg tracking-wider">
         🎖️ PREMIOS DEL AÑO
       </div>
@@ -463,7 +450,6 @@ function ResumenCierreUI({
         )}
       </div>
 
-      {/* Premio sorpresa */}
       {r.presentismo_sorpresa && (
         <>
           <div className="bebas mt-4 px-1 text-lg tracking-wider" style={{ color: "var(--gold)" }}>
