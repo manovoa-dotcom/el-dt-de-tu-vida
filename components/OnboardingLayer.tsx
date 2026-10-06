@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import GloboComic from "./GloboComic";
 import {
@@ -19,6 +19,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   const [activo, setActivo] = useState(false);
   const [pasoIdx, setPasoIdx] = useState(0);
   const [esperandoDestino, setEsperandoDestino] = useState<string | null>(null);
+  const esperandoRef = useRef(false);
 
   // Arranque automático la primera vez
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     const handler = () => {
       setPasoIdx(0);
       setEsperandoDestino(null);
+      esperandoRef.current = false;
       setActivo(true);
     };
     window.addEventListener("onboarding:start", handler);
@@ -66,17 +68,59 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
 
   const retroceder = () => {
     setEsperandoDestino(null);
+    esperandoRef.current = false;
     setPasoIdx((prev) => Math.max(0, prev - 1));
   };
 
-  // Detectar cuando el pathname coincide con el destino esperado → avanzar
+  // ─── Esperar a que la página Y el target estén listos ───
   useEffect(() => {
     if (!esperandoDestino) return;
-    if (pathname.startsWith(`/${esperandoDestino}`)) {
-      setEsperandoDestino(null);
-      avanzar();
+    if (!pathname.startsWith(`/${esperandoDestino}`)) return;
+
+    // Ya estamos en la página. Pero puede que esté mostrando un skeleton.
+    // Vamos a esperar a que el TARGET del próximo paso exista en el DOM.
+    const nextPaso = pasosDisponibles[pasoIdx + 1];
+
+    // Si el próximo paso no tiene target (o es navegación), avanzamos directo
+    if (
+      !nextPaso ||
+      nextPaso.tipo !== "info" ||
+      !nextPaso.target
+    ) {
+      const timer = setTimeout(() => {
+        setEsperandoDestino(null);
+        esperandoRef.current = false;
+        avanzar();
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [pathname, esperandoDestino, avanzar]);
+
+    const targetId = nextPaso.target;
+    let intentos = 0;
+    const maxIntentos = 30; // 3 segundos máximo
+
+    const intervalo = setInterval(() => {
+      intentos++;
+      const el = document.getElementById(targetId);
+      if (el) {
+        clearInterval(intervalo);
+        // Pequeño delay para que la página termine de acomodarse
+        setTimeout(() => {
+          setEsperandoDestino(null);
+          esperandoRef.current = false;
+          avanzar();
+        }, 200);
+      } else if (intentos >= maxIntentos) {
+        // Timeout: avanzamos igual
+        clearInterval(intervalo);
+        setEsperandoDestino(null);
+        esperandoRef.current = false;
+        avanzar();
+      }
+    }, 100);
+
+    return () => clearInterval(intervalo);
+  }, [pathname, esperandoDestino, pasoIdx, pasosDisponibles, avanzar]);
 
   if (!activo) return null;
 
@@ -100,17 +144,15 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     const esperando = esperandoDestino === destino;
 
     const irAlDestino = () => {
+      if (esperandoRef.current) return; // ya está esperando
       if (yaEstoyAca) {
         avanzar();
       } else {
+        esperandoRef.current = true;
         setEsperandoDestino(destino);
         router.push(`/${destino}`);
       }
     };
-
-        const targetNavegacion =
-      paso.targetNavegacion ?? "onboarding-tabbar";
-    const centrado = paso.centradoNavegacion ?? false;
 
     return (
       <GloboComic
@@ -118,14 +160,13 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
         totalPasos={pasosDisponibles.length}
         titulo={paso.tituloNavegacion ?? `Vamos a ${nombreDestino[destino]}`}
         texto={paso.textoNavegacion ?? ""}
-        targetId={yaEstoyAca ? null : targetNavegacion}
+        targetId={yaEstoyAca ? null : "onboarding-tabbar"}
         posicion={yaEstoyAca ? "centro" : "arriba"}
         botonSiguiente={
           esperando
-            ? "Navegando…"
+            ? "⏳ Cargando..."
             : paso.botonNavegacion ?? `Ir a ${nombreDestino[destino]} →`
         }
-        centradoX={centrado}
         onNext={irAlDestino}
         onPrev={retroceder}
         onSkip={terminar}
@@ -139,8 +180,6 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
   const esDeEstaPantalla = pathname.startsWith(`/${paso.page}`);
 
   if (!esDeEstaPantalla) {
-    // Caso de emergencia: el paso es de otra pantalla sin haber pasado
-    // por un paso de navegación. Se saltea automáticamente.
     const nombrePagina: Record<string, string> = {
       inicio: "Inicio",
       convocatoria: "Convocatoria",
@@ -164,7 +203,7 @@ export default function OnboardingLayer({ hayPartidoJugado }: Props) {
     );
   }
 
-    return (
+  return (
     <GloboComic
       pasoActual={pasoIdx}
       totalPasos={pasosDisponibles.length}

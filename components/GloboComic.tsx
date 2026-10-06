@@ -36,7 +36,7 @@ export default function GloboComic({
   onSkip,
   linkSecundario,
 }: Props) {
-   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [posicionado, setPosicionado] = useState(false);
   const [altoGlobo, setAltoGlobo] = useState(280);
   const globoRef = useRef<HTMLDivElement>(null);
@@ -93,118 +93,104 @@ export default function GloboComic({
     };
   }, [targetId, pasoActual]);
 
+  // Medir la altura real del globo
+  useEffect(() => {
+    if (!posicionado) return;
+    const medir = () => {
+      if (globoRef.current) {
+        const h = globoRef.current.getBoundingClientRect().height;
+        if (h > 0 && Math.abs(h - altoGlobo) > 4) {
+          setAltoGlobo(h);
+        }
+      }
+    };
+    medir();
+    const t = setTimeout(medir, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posicionado, pasoActual, titulo, texto]);
+
   if (!posicionado) return null;
 
-  // ─── Cálculos de posición ───
+  // ─── Algoritmo de posición simple y robusto ───
+  const VW = window.innerWidth;
+  const VH = window.innerHeight;
   const MARGEN = 12;
-  const ANCHO_GLOBO = Math.min(340, window.innerWidth - MARGEN * 2);
-  const ALTO_ESTIMADO = 280; // aproximado para evitar desborde
+  const ANCHO_GLOBO = Math.min(340, VW - MARGEN * 2);
+  const ALTO = Math.min(altoGlobo, VH * 0.75); // nunca más alto que 75% de la pantalla
 
-  let globoStyle: React.CSSProperties = {};
-  let tailDir: Posicion = "abajo";
-  let tailLeftPx: number | null = null;
-  let tailTopPx: number | null = null;
+  // Decidir modo: arriba del target, abajo del target, o centrado
+  let modo: "arriba" | "abajo" | "centro" = "centro";
+  let targetCentroY = VH / 2;
+  let targetCentroX = VW / 2;
 
-  if (!targetRect || posicion === "centro") {
-    globoStyle = {
-      left: "50%",
-      top: "50%",
-      transform: "translate(-50%, -50%)",
-      maxWidth: "min(90vw, 400px)",
-    };
-    tailDir = "centro";
-  } else {
-    const { top, left, width, height, bottom, right } = targetRect;
+  if (targetRect) {
+    targetCentroY = targetRect.top + targetRect.height / 2;
+    targetCentroX = targetRect.left + targetRect.width / 2;
 
     if (posicion === "arriba") {
-      // Globo arriba del target, colita apunta hacia abajo
-      const leftPx = centradoX
-        ? (window.innerWidth - ANCHO_GLOBO) / 2
-        : Math.max(
-            MARGEN,
-            Math.min(
-              left + width / 2 - ANCHO_GLOBO / 2,
-              window.innerWidth - ANCHO_GLOBO - MARGEN
-            )
-          );
-
-      globoStyle = {
-        left: leftPx,
-        bottom: Math.max(MARGEN, window.innerHeight - top + 14),
-        width: ANCHO_GLOBO,
-      };
-
-      const centroTarget = left + width / 2;
-      tailLeftPx = Math.max(
-        24,
-        Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 48)
-      );
-
-      tailDir = "abajo";
+      // Pedido: arriba. Si hay espacio, arriba. Si no, abajo.
+      const espacioArriba = targetRect.top - MARGEN - 16;
+      if (espacioArriba >= ALTO) {
+        modo = "arriba";
+      } else if (VH - targetRect.bottom - MARGEN - 16 >= ALTO) {
+        modo = "abajo";
+      } else {
+        modo = "centro";
+      }
     } else if (posicion === "abajo") {
-      // Globo debajo del target, colita apunta hacia arriba
-      const leftPx = centradoX
-        ? (window.innerWidth - ANCHO_GLOBO) / 2
-        : Math.max(
-            MARGEN,
-            Math.min(
-              left + width / 2 - ANCHO_GLOBO / 2,
-              window.innerWidth - ANCHO_GLOBO - MARGEN
-            )
-          );
-
-      // Limitar la altura para que no se salga por abajo
-      const topPx = Math.min(bottom + 14, window.innerHeight - ALTO_ESTIMADO - MARGEN);
-
-      globoStyle = {
-        left: leftPx,
-        top: Math.max(MARGEN, topPx),
-        width: ANCHO_GLOBO,
-      };
-
-      const centroTarget = left + width / 2;
-      tailLeftPx = Math.max(
-        24,
-        Math.min(centroTarget - leftPx - 12, ANCHO_GLOBO - 48)
-      );
-
-      tailDir = "arriba";
-    } else if (posicion === "izquierda") {
-      // Globo a la izquierda del target, colita apunta a la derecha
-      const rightPx = window.innerWidth - left + 14;
-      const topPx = Math.max(
-        MARGEN,
-        Math.min(top + height / 2 - 60, window.innerHeight - ALTO_ESTIMADO - MARGEN)
-      );
-
-      globoStyle = {
-        right: rightPx,
-        top: topPx,
-        width: ANCHO_GLOBO,
-      };
-
-      tailTopPx = 40;
-      tailDir = "derecha";
+      const espacioAbajo = VH - targetRect.bottom - MARGEN - 16;
+      if (espacioAbajo >= ALTO) {
+        modo = "abajo";
+      } else if (targetRect.top - MARGEN - 16 >= ALTO) {
+        modo = "arriba";
+      } else {
+        modo = "centro";
+      }
     } else {
-      // derecha
-      const leftPx = Math.max(
-        MARGEN,
-        Math.min(right + 14, window.innerWidth - ANCHO_GLOBO - MARGEN)
-      );
-      const topPx = Math.max(
-        MARGEN,
-        Math.min(top + height / 2 - 60, window.innerHeight - ALTO_ESTIMADO - MARGEN)
-      );
-
-      globoStyle = {
-        left: leftPx,
-        top: topPx,
-        width: ANCHO_GLOBO,
-      };
-
-      tailTopPx = 40;
-      tailDir = "izquierda";
+      modo = "centro";
     }
+  } else {
+    modo = "centro";
+  }
+
+  // Calcular leftPx
+  let leftPx: number;
+  if (centradoX || !targetRect || modo === "centro") {
+    leftPx = (VW - ANCHO_GLOBO) / 2;
+  } else {
+    // Tratar de alinear con el centro del target
+    leftPx = targetCentroX - ANCHO_GLOBO / 2;
+    // Clamp: no salirse
+    leftPx = Math.max(MARGEN, Math.min(leftPx, VW - ANCHO_GLOBO - MARGEN));
+  }
+
+  // Calcular topPx
+  let topPx: number;
+  if (modo === "arriba" && targetRect) {
+    topPx = targetRect.top - ALTO - 16;
+    topPx = Math.max(MARGEN, topPx);
+  } else if (modo === "abajo" && targetRect) {
+    topPx = targetRect.bottom + 16;
+    topPx = Math.min(topPx, VH - ALTO - MARGEN);
+    topPx = Math.max(MARGEN, topPx);
+  } else {
+    // centrado vertical
+    topPx = Math.max(MARGEN, (VH - ALTO) / 2);
+  }
+
+  // Colita
+  let tailDir: Posicion = "centro";
+  let tailLeftPx = 0;
+
+  if (modo === "arriba" && targetRect) {
+    tailDir = "abajo";
+    const centro = targetCentroX - leftPx;
+    tailLeftPx = Math.max(24, Math.min(centro - 12, ANCHO_GLOBO - 48));
+  } else if (modo === "abajo" && targetRect) {
+    tailDir = "arriba";
+    const centro = targetCentroX - leftPx;
+    tailLeftPx = Math.max(24, Math.min(centro - 12, ANCHO_GLOBO - 48));
   }
 
   return (
@@ -234,9 +220,13 @@ export default function GloboComic({
       {/* El globo */}
       <div
         className="globo-aparecer fixed z-[92]"
-        style={{ ...globoStyle }}
+        style={{
+          left: leftPx,
+          top: topPx,
+          width: ANCHO_GLOBO,
+        }}
       >
-        {/* Colita blanca con borde negro (solo en 2 lados) */}
+        {/* Colita blanca con borde negro */}
         {tailDir !== "centro" && (
           <div
             className="absolute"
@@ -246,30 +236,16 @@ export default function GloboComic({
               background: "#fff",
               transform: "rotate(45deg)",
               ...(tailDir === "abajo" && {
-                left:
-                  tailLeftPx !== null ? tailLeftPx : "50%",
+                left: tailLeftPx,
                 bottom: -14,
                 borderRight: "3px solid #000",
                 borderBottom: "3px solid #000",
               }),
               ...(tailDir === "arriba" && {
-                left:
-                  tailLeftPx !== null ? tailLeftPx : "50%",
+                left: tailLeftPx,
                 top: -14,
                 borderLeft: "3px solid #000",
                 borderTop: "3px solid #000",
-              }),
-              ...(tailDir === "derecha" && {
-                right: -14,
-                top: tailTopPx !== null ? tailTopPx : 40,
-                borderTop: "3px solid #000",
-                borderRight: "3px solid #000",
-              }),
-              ...(tailDir === "izquierda" && {
-                left: -14,
-                top: tailTopPx !== null ? tailTopPx : 40,
-                borderBottom: "3px solid #000",
-                borderLeft: "3px solid #000",
               }),
             }}
           />
@@ -277,6 +253,7 @@ export default function GloboComic({
 
         {/* Cuerpo del globo */}
         <div
+          ref={globoRef}
           className="globo-flotar relative"
           style={{
             background: "#fff",
@@ -285,6 +262,8 @@ export default function GloboComic({
             padding: "20px 22px 18px",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             ["--rot" as string]: "-1.5deg",
+            maxHeight: ALTO,
+            overflowY: "auto",
           }}
         >
           {/* Progreso */}
