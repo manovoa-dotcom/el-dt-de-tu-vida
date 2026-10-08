@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import BotonAyuda from "@/components/BotonAyuda";
+import BotonNotificaciones from "@/components/BotonNotificaciones";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import BotonAnotarse from "./BotonAnotarse";
@@ -193,7 +194,7 @@ export default async function InicioPage() {
           </Link>
         </div>
          
-        <div className="mt-2 flex items-center gap-4">
+               <div className="mt-2 flex flex-wrap items-center gap-4">
           <Link
             href="/como-se-juega"
             className="inline-flex items-center gap-1 text-xs no-underline"
@@ -208,6 +209,7 @@ export default async function InicioPage() {
           >
             🗳️ Elecciones
           </Link>
+          <BotonNotificaciones />
           <BotonAyuda />
           <Link
             href="/config/correcciones"

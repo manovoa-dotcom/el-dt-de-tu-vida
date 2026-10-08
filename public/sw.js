@@ -1,7 +1,5 @@
-// Service Worker de "El DT de tu vida"
-// Solo para hacer la app instalable y manejar notificaciones push.
-
-const CACHE_NAME = "eldt-v1";
+// public/sw.js
+const CACHE_NAME = "eldt-v2";
 const URLS_TO_CACHE = ["/inicio", "/icon.svg", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -14,54 +12,42 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      )
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  // No cacheamos llamadas a Supabase ni al API
   const url = new URL(event.request.url);
-  if (
-    url.hostname.includes("supabase") ||
-    url.pathname.startsWith("/api") ||
-    event.request.method !== "GET"
-  ) {
-    return;
-  }
-
-  // Para el resto: red primero, caché como respaldo
+  if (url.hostname.includes("supabase") || url.pathname.startsWith("/api") || event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cachear HTML estático (no en query strings)
-        if (
-          response.ok &&
-          url.origin === self.location.origin &&
-          url.search === ""
-        ) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    fetch(event.request).then((response) => {
+      if (response.ok && url.origin === self.location.origin && url.search === "") {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });
 
-// Para futuras notificaciones push
+// --- Push Notifications ---
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-  const data = event.data.json();
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    data = { title: "El DT", body: event.data.text() };
+  }
+
   const options = {
-    body: data.body || "",
+    body: data.body || "Tenés una novedad en el campeonato.",
     icon: "/icon.svg",
     badge: "/icon.svg",
     vibrate: [100, 50, 100],
-    data: data.url ? { url: data.url } : {},
+    data: { url: data.url || "/inicio" },
   };
   event.waitUntil(self.registration.showNotification(data.title || "El DT", options));
 });
@@ -70,7 +56,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/inicio";
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((list) => {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const c of list) {
         if (c.url.includes(url) && "focus" in c) return c.focus();
       }
