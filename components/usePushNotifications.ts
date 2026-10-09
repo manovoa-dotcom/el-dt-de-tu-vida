@@ -21,19 +21,31 @@ export function usePushNotifications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+    useEffect(() => {
     if (
       typeof window !== "undefined" &&
       "serviceWorker" in navigator &&
       "PushManager" in window
     ) {
       setIsSupported(true);
-      navigator.serviceWorker.ready.then((reg) => {
-        reg.pushManager.getSubscription().then((sub) => {
+
+      // Timeout de seguridad: si el SW no responde en 3 segundos, seguimos igual
+      const timeout = setTimeout(() => {
+        setLoading(false);
+      }, 3000);
+
+      navigator.serviceWorker.ready
+        .then((reg) => reg.pushManager.getSubscription())
+        .then((sub) => {
           setSubscription(sub);
+          clearTimeout(timeout);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error verificando suscripción:", err);
+          clearTimeout(timeout);
           setLoading(false);
         });
-      });
     } else {
       setLoading(false);
     }
