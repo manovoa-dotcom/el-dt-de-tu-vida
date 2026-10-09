@@ -6,11 +6,23 @@ export default function BotonNotificaciones() {
   const { isSupported, subscription, loading, error, subscribe } =
     usePushNotifications();
 
-  // Mientras carga, no mostramos nada
-  if (loading) return null;
+   // Mientras carga, mostramos un texto de diagnóstico
+  if (loading) {
+    return (
+      <span className="text-xs" style={{ color: "var(--dim)" }}>
+        🔔 Cargando...
+      </span>
+    );
+  }
 
-  // Si no está soportado, no mostramos nada
-  if (!isSupported) return null;
+  // Si no está soportado, mostramos un texto de diagnóstico
+  if (!isSupported) {
+    return (
+      <span className="text-xs" style={{ color: "var(--red)" }}>
+        🔔 No soportado
+      </span>
+    );
+  }
 
   // Si ya está suscrito, mostramos el estado
   if (subscription) {
