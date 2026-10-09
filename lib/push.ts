@@ -1,12 +1,6 @@
 import webpush from "web-push";
 import { createClient } from "./supabase/server";
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 type PushPayload = {
   title: string;
   body: string;
@@ -17,6 +11,13 @@ export async function enviarNotificacion(
   userIds: string[],
   payload: PushPayload
 ) {
+  // Configurar VAPID cada vez (por si el build no tiene las env vars)
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:manovoa@gmail.com",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    process.env.VAPID_PRIVATE_KEY || ""
+  );
+
   if (userIds.length === 0) return;
 
   const supabase = await createClient();
