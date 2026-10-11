@@ -54,3 +54,41 @@ export async function enviarNotificacion(
 
   await Promise.allSettled(promesas);
 }
+
+// ────────────────────────────────────────────────────────────────
+// Helper: obtener los user_ids de todos los miembros activos del grupo
+// ────────────────────────────────────────────────────────────────
+export async function getUserIdDeMiembros(
+  groupId: string
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", groupId)
+    .eq("status", "activo")
+    .not("user_id", "is", null);
+
+  return (data ?? [])
+    .map((m) => m.user_id)
+    .filter((x): x is string => !!x);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Helper: obtener los user_ids de una lista de member_ids
+// ────────────────────────────────────────────────────────────────
+export async function getUserIdsDeMembers(
+  memberIds: string[]
+): Promise<string[]> {
+  if (memberIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .in("id", memberIds)
+    .not("user_id", "is", null);
+
+  return (data ?? [])
+    .map((m) => m.user_id)
+    .filter((x): x is string => !!x);
+}

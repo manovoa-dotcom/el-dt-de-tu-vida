@@ -1,5 +1,6 @@
 "use server";
 
+import { enviarNotificacion, getUserIdsDeMembers } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { crearNoticiaAuto } from "@/lib/news";
@@ -176,23 +177,33 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
   if (err) return { ok: false, error: "Error al dar de baja" };
 
   if (eraAnotado) {
-    // 1. Sacar al jugador de todos los equipos que lo tenían
+        // 1. Sacar al jugador de todos los equipos que lo tenían
     const { data: teams } = await supabase
       .from("fantasy_teams")
-      .select("id")
+      .select("id, dt_member_id")
       .eq("match_id", matchId);
 
     const teamIds = (teams ?? []).map((t) => t.id);
 
-    // Contamos cuántos DTs lo tenían ANTES de borrarlo
+    // Contamos cuántos DTs lo tenían y guardamos quiénes eran
     let nDts = 0;
+    let dtsAfectados: string[] = [];
     if (teamIds.length > 0) {
-      const { count } = await supabase
+      const { data: picksConDts } = await supabase
         .from("fantasy_picks")
-        .select("id", { count: "exact", head: true })
+        .select("team_id")
         .in("team_id", teamIds)
         .eq("member_id", miembro.id);
-      nDts = count ?? 0;
+
+      const teamsConJugador = new Set(
+        (picksConDts ?? []).map((p) => p.team_id)
+      );
+
+      dtsAfectados = (teams ?? [])
+        .filter((t) => teamsConJugador.has(t.id))
+        .map((t) => t.dt_member_id);
+
+      nDts = dtsAfectados.length;
 
       if (nDts > 0) {
         await supabase
@@ -224,7 +235,7 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
         .eq("id", siguiente.id);
     }
 
-    // 3. Noticia automática
+        // 3. Noticia automática
     const detalle =
       nDts > 0
         ? `${nDts} DT${nDts !== 1 ? "s" : ""} lo tenía${nDts !== 1 ? "n" : ""} en su equipo. ¡Reemplazalo a tiempo!`
@@ -236,6 +247,16 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
       body: detalle,
       payload: { member_id: miembro.id, match_id: matchId },
     });
+
+    // 4. Push: avisar a los DTs que lo tenían
+    if (dtsAfectados.length > 0) {
+      const userIds = await getUserIdsDeMembers(dtsAfectados);
+      await enviarNotificacion(userIds, {
+        title: `🔁 Se bajó ${miembro.display_name}`,
+        body: "Estaba en tu equipo. ¡Reemplazalo antes de que cierre!",
+        url: "/convocatoria",
+      });
+    }
   }
 
   revalidatePath("/convocatoria");

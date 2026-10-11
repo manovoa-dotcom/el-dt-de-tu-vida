@@ -1,5 +1,6 @@
 "use server";
 
+import { enviarNotificacion, getUserIdDeMiembros } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { crearNoticiaAuto } from "@/lib/news";
@@ -114,12 +115,12 @@ export async function guardarResultados(
   // 5. Marcar partido como jugado
   await supabase.from("matches").update({ status: "jugada" }).eq("id", matchId);
 
-  // 6. Noticias automáticas
-  await crearNoticiaAuto({
-    groupId: membership.group_id,
-    title: `📊 Resultados cargados · Fecha ${match.number}`,
-    body: "Ya podés ver los puntajes en la pestaña Resultados.",
-    payload: { match_id: matchId, match_number: match.number },
+   // Push: avisar a todos los miembros activos
+  const userIds = await getUserIdDeMiembros(membership.group_id);
+  await enviarNotificacion(userIds, {
+    title: `📊 Resultados Fecha ${match.number}`,
+    body: "Ya podés ver los puntajes de la fecha.",
+    url: "/resultados",
   });
 
     // ══════════════════════════════════════════════════════════════
