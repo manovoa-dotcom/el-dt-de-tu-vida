@@ -30,11 +30,11 @@ export async function enviarNotificacion(
     return;
   }
 
-  const supabase = await createClient();
-  const { data: subs, error: errSubs } = await supabase
-    .from("push_subscriptions")
-    .select("endpoint, keys")
-    .in("user_id", userIds);
+    const supabase = await createClient();
+  const { data: subs, error: errSubs } = await supabase.rpc(
+    "get_push_subs_for_users",
+    { p_user_ids: userIds }
+  );
 
   if (errSubs) {
     console.error("[PUSH] Error leyendo suscripciones:", errSubs);
@@ -48,36 +48,40 @@ export async function enviarNotificacion(
     return;
   }
 
-  const promesas = subs.map((sub, idx) =>
-    webpush
-      .sendNotification(
-        {
-          endpoint: sub.endpoint,
-          keys: sub.keys as { p256dh: string; auth: string },
-        },
-        JSON.stringify(payload)
-      )
-      .then(() => {
-        console.log(`[PUSH] ✅ Enviado a suscripción ${idx + 1}`);
-      })
-      .catch((err) => {
-        console.error(
-          `[PUSH] ❌ Error en suscripción ${idx + 1}:`,
-          err.statusCode,
-          err.body
-        );
-        if (err.statusCode === 410) {
-          supabase
-            .from("push_subscriptions")
-            .delete()
-            .eq("endpoint", sub.endpoint);
-        }
-      })
+      const subsTyped = subs as { endpoint: string; keys: unknown }[];
+
+  const promesas = subsTyped.map(
+    (sub: { endpoint: string; keys: unknown }, idx: number) =>
+      webpush
+        .sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: sub.keys as { p256dh: string; auth: string },
+          },
+          JSON.stringify(payload)
+        )
+        .then(() => {
+          console.log(`[PUSH] ✅ Enviado a suscripción ${idx + 1}`);
+        })
+        .catch((err) => {
+          console.error(
+            `[PUSH] ❌ Error en suscripción ${idx + 1}:`,
+            err.statusCode,
+            err.body
+          );
+          if (err.statusCode === 410) {
+            supabase
+              .from("push_subscriptions")
+              .delete()
+              .eq("endpoint", sub.endpoint);
+          }
+        })
   );
 
   await Promise.allSettled(promesas);
   console.log("[PUSH] Envío terminado");
 }
+
 // ────────────────────────────────────────────────────────────────
 // Helper: obtener los user_ids de todos los miembros activos del grupo
 // ────────────────────────────────────────────────────────────────
