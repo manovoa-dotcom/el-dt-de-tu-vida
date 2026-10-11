@@ -211,8 +211,9 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
           .delete()
           .in("team_id", teamIds)
           .eq("member_id", miembro.id);
-      }
+      
     }
+}
 
     // 2. Promover al primero de la lista de espera
     const { data: siguiente } = await supabase

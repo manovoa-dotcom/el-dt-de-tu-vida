@@ -20,19 +20,35 @@ export async function enviarNotificacion(
   userIds: string[],
   payload: PushPayload
 ) {
+  console.log("[PUSH] Iniciando envío a", userIds.length, "usuarios");
+  console.log("[PUSH] userIds:", userIds);
+
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-  if (userIds.length === 0) return;
+  if (userIds.length === 0) {
+    console.log("[PUSH] No hay usuarios para enviar");
+    return;
+  }
 
   const supabase = await createClient();
-  const { data: subs } = await supabase
+  const { data: subs, error: errSubs } = await supabase
     .from("push_subscriptions")
     .select("endpoint, keys")
     .in("user_id", userIds);
 
-  if (!subs || subs.length === 0) return;
+  if (errSubs) {
+    console.error("[PUSH] Error leyendo suscripciones:", errSubs);
+    return;
+  }
 
-  const promesas = subs.map((sub) =>
+  console.log("[PUSH] Suscripciones encontradas:", subs?.length ?? 0);
+
+  if (!subs || subs.length === 0) {
+    console.log("[PUSH] No hay suscripciones para esos usuarios");
+    return;
+  }
+
+  const promesas = subs.map((sub, idx) =>
     webpush
       .sendNotification(
         {
@@ -41,8 +57,15 @@ export async function enviarNotificacion(
         },
         JSON.stringify(payload)
       )
+      .then(() => {
+        console.log(`[PUSH] ✅ Enviado a suscripción ${idx + 1}`);
+      })
       .catch((err) => {
-        console.error("Error enviando push:", err.statusCode, err.body);
+        console.error(
+          `[PUSH] ❌ Error en suscripción ${idx + 1}:`,
+          err.statusCode,
+          err.body
+        );
         if (err.statusCode === 410) {
           supabase
             .from("push_subscriptions")
@@ -53,8 +76,8 @@ export async function enviarNotificacion(
   );
 
   await Promise.allSettled(promesas);
+  console.log("[PUSH] Envío terminado");
 }
-
 // ────────────────────────────────────────────────────────────────
 // Helper: obtener los user_ids de todos los miembros activos del grupo
 // ────────────────────────────────────────────────────────────────
