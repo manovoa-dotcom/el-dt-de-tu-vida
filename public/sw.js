@@ -4,7 +4,13 @@ const URLS_TO_CACHE = ["/inicio", "/icon.svg", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      // cache.addAll falla si UNO solo de los archivos no se puede cachear.
+      // Lo hacemos uno por uno con allSettled para que no rompa todo.
+      return Promise.allSettled(
+        URLS_TO_CACHE.map((url) => cache.add(url))
+      );
+    })
   );
   self.skipWaiting();
 });
