@@ -1,17 +1,14 @@
 import webpush from "web-push";
 import { createClient } from "./supabase/server";
 
-// Clave pública (es pública, no hay problema en hardcodearla)
-// Es un respaldo por si la variable de entorno no carga.
+// ⚠️ Valores hardcodeados para evitar problemas con la carga de env vars en Vercel
 const VAPID_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
   "BCXuQyvlUFx8LkX3EW1F6BAVdnKysPQ-SekSFc6ItZwKkKMp474RMll4chooH-F5ZJwJGUsE59YoSrBwvsBt_eM";
 
 const VAPID_PRIVATE_KEY =
-  process.env.VAPID_PRIVATE_KEY ||
   "MOP6QkVwC7xPp8YgGLdw_Sb0yXE2KsCITobWtlZks4E";
 
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:manovoa@gmail.com";
+const VAPID_SUBJECT = "mailto:manovoa@gmail.com";
 
 type PushPayload = {
   title: string;
@@ -23,7 +20,6 @@ export async function enviarNotificacion(
   userIds: string[],
   payload: PushPayload
 ) {
-  // Configurar VAPID cada vez que se llama
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
   if (userIds.length === 0) return;
