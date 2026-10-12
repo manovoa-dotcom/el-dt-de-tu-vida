@@ -103,6 +103,28 @@ export async function guardarResultados(
     if (errCards) console.error(errCards);
   }
 
+// 3.5. Marcar como "presente" a todos los que estaban anotados
+  //      y NO fueron marcados como falta
+  const { data: anotadosSinFalta } = await supabase
+    .from("attendance")
+    .select("id, member_id")
+    .eq("match_id", matchId)
+    .eq("status", "anotado");
+
+  if (anotadosSinFalta && anotadosSinFalta.length > 0) {
+    const faltasSet = new Set(faltas);
+    const presentesIds = anotadosSinFalta
+      .filter((a) => !faltasSet.has(a.member_id))
+      .map((a) => a.id);
+
+    if (presentesIds.length > 0) {
+      await supabase
+        .from("attendance")
+        .update({ status: "presente" })
+        .in("id", presentesIds);
+    }
+  }
+
   // 4. Recalcular puntajes
   const { error: errCalc } = await supabase.rpc("calcular_puntajes", {
     p_match_id: matchId,

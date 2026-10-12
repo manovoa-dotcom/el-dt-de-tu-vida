@@ -61,7 +61,7 @@ export default function ItemsClient({
     setForm((prev) =>
       prev.map((f) =>
         f.id === id
-          ? { ...f, points: Math.max(0, Math.min(20, f.points + delta)) }
+          ? { ...f, points: Math.max(0, f.points + delta) }
           : f
       )
     );
@@ -71,7 +71,7 @@ export default function ItemsClient({
     setForm((prev) =>
       prev.map((f) =>
         f.id === id
-          ? { ...f, points: Math.max(0, Math.min(20, valor)) }
+          ? { ...f, points: Math.max(0, valor) }
           : f
       )
     );
@@ -225,7 +225,7 @@ export default function ItemsClient({
                 >
                   −
                 </button>
-                <input
+                               <input
                   type="number"
                   value={f.points}
                   onChange={(e) => {
@@ -234,18 +234,17 @@ export default function ItemsClient({
                   }}
                   disabled={bloqueado || !f.active}
                   min={0}
-                  max={20}
-                  className="w-12 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none disabled:opacity-50"
+                  className="w-14 rounded-lg px-2 py-1 text-center text-sm font-bold outline-none disabled:opacity-50"
                   style={{
                     background: "rgba(242,182,50,0.15)",
                     border: "1px solid rgba(242,182,50,0.4)",
                     color: "var(--gold)",
                   }}
                 />
-                <button
+                  <button
                   type="button"
                   onClick={() => cambiarPuntos(item.id, 1)}
-                  disabled={bloqueado || !f.active || f.points >= 20}
+                  disabled={bloqueado || !f.active}
                   className="flex h-7 w-7 items-center justify-center rounded-lg border text-sm font-bold transition disabled:opacity-30"
                   style={{
                     borderColor: "rgba(255,255,255,0.15)",

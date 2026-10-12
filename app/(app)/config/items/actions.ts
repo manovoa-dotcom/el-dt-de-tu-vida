@@ -60,11 +60,10 @@ export async function guardarItems(
   }
 
   for (const it of items) {
-    if (it.points < 0 || it.points > 20) {
-      return { ok: false, error: "Los puntos deben estar entre 0 y 20" };
+    if (it.points < 0) {
+      return { ok: false, error: "Los puntos no pueden ser negativos" };
     }
   }
-
   for (const it of items) {
     const { error } = await supabase
       .from("items")
