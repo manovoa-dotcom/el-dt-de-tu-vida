@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { enviarNotificacion, getUserIdDeMiembros } from "@/lib/push";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export type ActionResult = {
   ok: boolean;
   error?: string;
+  message?: string;
 };
 
 // Convierte "2026-09-26T20:00" (datetime-local en hora AR) a ISO UTC.
@@ -197,4 +199,53 @@ export async function eliminarPartido(matchId: string): Promise<ActionResult> {
   revalidatePath("/inicio");
   revalidatePath("/config/partido");
   return { ok: true };
+}
+// // ────────────────────────────────────────────────────────────────
+// Avisar al grupo que abrió la convocatoria
+// ────────────────────────────────────────────────────────────────
+export async function avisarConvocatoria(
+  matchId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("group_id, role")
+    .eq("user_id", user.id)
+    .eq("status", "activo")
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership || membership.role !== "admin") {
+    return { ok: false, error: "Solo el admin puede avisar" };
+  }
+
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, number, group_id")
+    .eq("id", matchId)
+    .eq("group_id", membership.group_id)
+    .maybeSingle();
+
+  if (!match) return { ok: false, error: "Partido no encontrado" };
+
+  const userIds = await getUserIdDeMiembros(membership.group_id);
+  if (userIds.length === 0) {
+    return { ok: false, error: "No hay miembros activos para avisar" };
+  }
+
+  await enviarNotificacion(userIds, {
+    title: `⚽ Convocatoria abierta · Fecha ${match.number}`,
+    body: "Ya podés anotarte para el próximo partido. ¡No te quedes afuera!",
+    url: "/convocatoria",
+  });
+
+  return {
+    ok: true,
+    message: `Aviso enviado a ${userIds.length} miembro${userIds.length !== 1 ? "s" : ""}`,
+  };
 }

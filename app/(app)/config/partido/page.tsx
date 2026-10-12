@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import PartidoForm from "./PartidoForm";
+import BotonAvisar from "./BotonAvisar";
 
 export default async function PartidoPage() {
   const supabase = await createClient();
@@ -116,7 +117,9 @@ export default async function PartidoPage() {
         </p>
       </header>
 
-          <PartidoForm partido={partido ?? null} />
+             <PartidoForm partido={partido ?? null} />
+
+      {partido && <BotonAvisar matchId={partido.id} />}
 
       {partido && armado.length > 0 && (
         <EquiposArmados armado={armado} />
