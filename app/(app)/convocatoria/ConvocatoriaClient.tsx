@@ -512,6 +512,39 @@ export default function ConvocatoriaClient({
         )}
       </div>
 
+      {/* Aviso: faltan titulares */}
+      {!equipoCompleto && titulares.length < titularesEsperados && !equiposBloqueados && (
+        <div
+          className="mx-3 mt-3 rounded-2xl p-4"
+          style={{
+            background: "rgba(242,182,50,0.15)",
+            border: "2px solid var(--gold)",
+            animation: "highlightPulse 2.5s ease-in-out infinite",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">👥</span>
+            <div className="min-w-0 flex-1">
+              <div
+                className="bebas text-lg tracking-wider"
+                style={{ color: "var(--gold)" }}
+              >
+                FALTAN TITULARES
+              </div>
+              <p className="mt-1 text-xs font-bold" style={{ color: "var(--tx)" }}>
+                Elegiste <b>{titulares.length}</b> de <b>{titularesEsperados}</b>{" "}
+                titulares.
+                {titularesEsperados - titulares.length === 1
+                  ? " Te falta 1 más para guardar."
+                  : ` Te faltan ${titularesEsperados - titulares.length} más para guardar.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       {/* Aviso: te pasaste del presupuesto */}
       {presupuesto !== null && total > presupuesto && !equiposBloqueados && (
         <div
