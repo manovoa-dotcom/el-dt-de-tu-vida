@@ -1,6 +1,10 @@
 "use server";
 
-import { enviarNotificacion, getUserIdsDeMembers } from "@/lib/push";
+import {
+  enviarNotificacion,
+  getUserIdsDeMembers,
+  getUserIdDeMiembros,
+} from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { crearNoticiaAuto } from "@/lib/news";
@@ -91,6 +95,33 @@ export async function anotarse(matchId: string): Promise<ActionResult> {
         status: "anotado",
       });
       if (err) return { ok: false, error: "Error al anotar" };
+    }
+
+       // Push: avisar a todos si quedan pocos lugares o si se completó
+    const { count: nuevosAnotados } = await supabase
+      .from("attendance")
+      .select("id", { count: "exact", head: true })
+      .eq("match_id", matchId)
+      .in("status", ["anotado", "presente"]);
+
+    const total = nuevosAnotados ?? 0;
+
+    if (total === match.cupo) {
+      // Convocatoria completa
+      const userIds = await getUserIdDeMiembros(miembro.group_id);
+      await enviarNotificacion(userIds, {
+        title: "✅ Convocatoria completa",
+        body: `Se llenaron los ${match.cupo} lugares para el partido.`,
+        url: "/convocatoria",
+      });
+    } else if (total === match.cupo - 2) {
+      // Quedan exactamente 2 lugares
+      const userIds = await getUserIdDeMiembros(miembro.group_id);
+      await enviarNotificacion(userIds, {
+        title: "🔥 Quedan pocos lugares",
+        body: `Solo quedan 2 lugares para anotarse. ¡Apurate!`,
+        url: "/convocatoria",
+      });
     }
 
     revalidatePath("/convocatoria");
@@ -210,7 +241,7 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
       }
     }
 
-    // 2. Promover al primero de la lista de espera
+        // 2. Promover al primero de la lista de espera
     const { data: siguiente } = await supabase
       .from("attendance")
       .select("id, member_id")
@@ -229,6 +260,21 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
           resolved_at: new Date().toISOString(),
         })
         .eq("id", siguiente.id);
+
+      // Push: avisar al que subió desde la lista de espera
+      const { data: promovido } = await supabase
+        .from("group_members")
+        .select("user_id, display_name")
+        .eq("id", siguiente.member_id)
+        .maybeSingle();
+
+      if (promovido?.user_id) {
+        await enviarNotificacion([promovido.user_id], {
+          title: "🎉 ¡Estás dentro!",
+          body: "Se liberó un lugar y entraste desde la lista de espera. ¡Corré a armar tu equipo!",
+          url: "/convocatoria",
+        });
+      }
     }
 
         // 3. Noticia automática
