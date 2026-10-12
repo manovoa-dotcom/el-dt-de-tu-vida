@@ -177,43 +177,38 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
   if (err) return { ok: false, error: "Error al dar de baja" };
 
   if (eraAnotado) {
-        // 1. Sacar al jugador de todos los equipos que lo tenían
-    const { data: teams } = await supabase
-      .from("fantasy_teams")
-      .select("id, dt_member_id")
-      .eq("match_id", matchId);
+          // 1. Averiguar qué DTs lo tenían (vía RPC para saltar RLS)
+    const { data: dtsRaw } = await supabase.rpc("get_dts_con_jugador", {
+      p_match_id: matchId,
+      p_member_id: miembro.id,
+    });
 
-    const teamIds = (teams ?? []).map((t) => t.id);
+    console.log("[BAJA] dtsRaw:", dtsRaw);
 
-    // Contamos cuántos DTs lo tenían y guardamos quiénes eran
-    let nDts = 0;
-    let dtsAfectados: string[] = [];
-    if (teamIds.length > 0) {
-      const { data: picksConDts } = await supabase
-        .from("fantasy_picks")
-        .select("team_id")
-        .in("team_id", teamIds)
-        .eq("member_id", miembro.id);
+    const dtsAfectados: string[] = (dtsRaw ?? [])
+      .map((d: { dt_member_id: string }) => d.dt_member_id)
+      .filter((x: string) => !!x);
 
-      const teamsConJugador = new Set(
-        (picksConDts ?? []).map((p) => p.team_id)
-      );
+    console.log("[BAJA] dtsAfectados (member_ids):", dtsAfectados);
 
-      dtsAfectados = (teams ?? [])
-        .filter((t) => teamsConJugador.has(t.id))
-        .map((t) => t.dt_member_id);
+    const nDts = dtsAfectados.length;
 
-      nDts = dtsAfectados.length;
+    // 2. Sacarlo de todos los equipos
+    if (nDts > 0) {
+      const { data: teams } = await supabase
+        .from("fantasy_teams")
+        .select("id")
+        .eq("match_id", matchId);
 
-      if (nDts > 0) {
+      const teamIds = (teams ?? []).map((t) => t.id);
+      if (teamIds.length > 0) {
         await supabase
           .from("fantasy_picks")
           .delete()
           .in("team_id", teamIds)
           .eq("member_id", miembro.id);
-      
+      }
     }
-}
 
     // 2. Promover al primero de la lista de espera
     const { data: siguiente } = await supabase
@@ -249,9 +244,10 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
       payload: { member_id: miembro.id, match_id: matchId },
     });
 
-    // 4. Push: avisar a los DTs que lo tenían
+       // 4. Push: avisar a los DTs que lo tenían
     if (dtsAfectados.length > 0) {
       const userIds = await getUserIdsDeMembers(dtsAfectados);
+      console.log("[BAJA] userIds a notificar:", userIds);
       await enviarNotificacion(userIds, {
         title: `🔁 Se bajó ${miembro.display_name}`,
         body: "Estaba en tu equipo. ¡Reemplazalo antes de que cierre!",
