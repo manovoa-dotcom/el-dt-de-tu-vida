@@ -512,8 +512,39 @@ export default function ConvocatoriaClient({
         )}
       </div>
 
+      {/* Aviso: te pasaste del presupuesto */}
+      {presupuesto !== null && total > presupuesto && !equiposBloqueados && (
+        <div
+          className="mx-3 mt-3 rounded-2xl p-4"
+          style={{
+            background: "rgba(226,59,77,0.2)",
+            border: "2px solid var(--red)",
+            animation: "highlightPulse 1.8s ease-in-out infinite",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🚨</span>
+            <div className="min-w-0 flex-1">
+              <div
+                className="bebas text-lg tracking-wider"
+                style={{ color: "var(--red)" }}
+              >
+                TE PASASTE DEL PRESUPUESTO
+              </div>
+              <p className="mt-1 text-xs font-bold" style={{ color: "var(--tx)" }}>
+                Gastaste <b>{total}</b> pero el máximo es <b>{presupuesto}</b>.
+                Sacá <b>{total - presupuesto}</b> de valor para poder guardar.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+   
+
+
       {/* Barra MI EQUIPO */}
-            {/* Barra MI EQUIPO */}
+            
       <div
         id="onboarding-mi-equipo"
         className="sticky top-0 z-30 mx-3 mt-3 rounded-2xl px-4 py-3"
@@ -538,15 +569,21 @@ export default function ConvocatoriaClient({
             </div>
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>
               T {titulares.length}/{titularesEsperados} · S {suplente ? 1 : 0}/1 ·{" "}
-              {presupuesto === null ? (
+                           {presupuesto === null ? (
                 <span style={{ color: "var(--gold)" }}>∞</span>
               ) : (
                 <span
+                  className="rounded-full px-2 py-0.5"
                   style={{
+                    background:
+                      total > presupuesto
+                        ? "rgba(226,59,77,0.25)"
+                        : "rgba(242,182,50,0.15)",
                     color: total > presupuesto ? "var(--red)" : "var(--gold)",
                     fontWeight: 700,
                   }}
                 >
+                  {total > presupuesto && "⚠ "}
                   {total}/{presupuesto}
                 </span>
               )}
