@@ -573,7 +573,7 @@ export default function ConvocatoriaClient({
         </div>
       )}
 
-   
+
 
 
       {/* Barra MI EQUIPO */}
