@@ -183,7 +183,7 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
       p_member_id: miembro.id,
     });
 
-    console.log("[BAJA] dtsRaw:", dtsRaw);
+   
 
     const dtsAfectados: string[] = (dtsRaw ?? [])
       .map((d: { dt_member_id: string }) => d.dt_member_id)
@@ -247,7 +247,7 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
        // 4. Push: avisar a los DTs que lo tenían
     if (dtsAfectados.length > 0) {
       const userIds = await getUserIdsDeMembers(dtsAfectados);
-      console.log("[BAJA] userIds a notificar:", userIds);
+      
       await enviarNotificacion(userIds, {
         title: `🔁 Se bajó ${miembro.display_name}`,
         body: "Estaba en tu equipo. ¡Reemplazalo antes de que cierre!",
