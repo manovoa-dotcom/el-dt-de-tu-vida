@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import Avatar from "@/components/Avatar";
@@ -12,6 +10,7 @@ import {
   suspenderMiembro,
   rehabilitarMiembro,
   darDeBaja,
+  eliminarDefinitivo,
   agregarInvitado,
   type ActionResult,
 } from "./actions";
@@ -20,6 +19,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState<Miembro | null>(null);
 
   function ejecutar(
     fn: () => Promise<ActionResult>,
@@ -67,10 +67,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
             <FilaMiembro key={m.id} m={m}>
               <BotonMini
                 onClick={() =>
-                  ejecutar(
-                    () => aprobarMiembro(m.id),
-                    () => router.refresh()
-                  )
+                  ejecutar(() => aprobarMiembro(m.id), () => router.refresh())
                 }
                 disabled={isPending}
                 color="var(--gold)"
@@ -78,10 +75,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
               />
               <BotonMini
                 onClick={() =>
-                  ejecutar(
-                    () => rechazarPendiente(m.id),
-                    () => router.refresh()
-                  )
+                  ejecutar(() => rechazarPendiente(m.id), () => router.refresh())
                 }
                 disabled={isPending}
                 color="var(--red)"
@@ -109,10 +103,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
           <FilaMiembro key={m.id} m={m}>
             <BotonMini
               onClick={() =>
-                ejecutar(
-                  () => suspenderMiembro(m.id),
-                  () => router.refresh()
-                )
+                ejecutar(() => suspenderMiembro(m.id), () => router.refresh())
               }
               disabled={isPending}
               color="var(--dim)"
@@ -134,10 +125,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
             <FilaMiembro key={m.id} m={m}>
               <BotonMini
                 onClick={() =>
-                  ejecutar(
-                    () => darDeBaja(m.id),
-                    () => router.refresh()
-                  )
+                  ejecutar(() => darDeBaja(m.id), () => router.refresh())
                 }
                 disabled={isPending}
                 color="var(--red)"
@@ -155,10 +143,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
             <FilaMiembro key={m.id} m={m}>
               <BotonMini
                 onClick={() =>
-                  ejecutar(
-                    () => rehabilitarMiembro(m.id),
-                    () => router.refresh()
-                  )
+                  ejecutar(() => rehabilitarMiembro(m.id), () => router.refresh())
                 }
                 disabled={isPending}
                 color="var(--gold)"
@@ -166,10 +151,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
               />
               <BotonMini
                 onClick={() =>
-                  ejecutar(
-                    () => darDeBaja(m.id),
-                    () => router.refresh()
-                  )
+                  ejecutar(() => darDeBaja(m.id), () => router.refresh())
                 }
                 disabled={isPending}
                 color="var(--red)"
@@ -185,12 +167,101 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
         <Seccion titulo={`📁 Bajas (${bajas.length})`} abierta={false}>
           {bajas.map((m) => (
             <FilaMiembro key={m.id} m={m}>
-              <span className="text-xs" style={{ color: "var(--dim)" }}>
-                Archivado
-              </span>
+              <BotonMini
+                onClick={() =>
+                  ejecutar(() => rehabilitarMiembro(m.id), () => router.refresh())
+                }
+                disabled={isPending}
+                color="var(--gold)"
+                texto="Reactivar"
+              />
+              <BotonMini
+                onClick={() => setConfirmarEliminar(m)}
+                disabled={isPending}
+                color="var(--red)"
+                texto="🗑️ Eliminar"
+              />
             </FilaMiembro>
           ))}
         </Seccion>
+      )}
+
+      {/* Modal de confirmación para eliminar */}
+      {confirmarEliminar && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          style={{ background: "rgba(0,0,0,0.75)" }}
+          onClick={() => !isPending && setConfirmarEliminar(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{
+              background: "var(--g1)",
+              border: "2px solid var(--red)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="text-4xl">🗑️</div>
+              <h2
+                className="bebas mt-2 text-2xl"
+                style={{ color: "var(--red)" }}
+              >
+                ¿Eliminar definitivamente?
+              </h2>
+            </div>
+
+            <div
+              className="mt-4 rounded-xl p-3 text-xs"
+              style={{
+                background: "rgba(226,59,77,0.15)",
+                color: "var(--tx)",
+              }}
+            >
+              Vas a borrar a <b>{confirmarEliminar.display_name}</b> del grupo.
+              <br />
+              <br />
+              ⚠️ Esto borra <b>todo su historial</b>: partidos jugados, puntos,
+              tarjetas, equipos armados, valores de mercado.{" "}
+              <b>No se puede deshacer.</b>
+              <br />
+              <br />
+              Si solo querés ocultarlo sin perder su historia, usá "Suspender"
+              en lugar de esto.
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmarEliminar(null)}
+                disabled={isPending}
+                className="flex-1 rounded-xl border py-3 text-sm font-bold transition disabled:opacity-50"
+                style={{
+                  borderColor: "rgba(255,255,255,0.2)",
+                  color: "var(--dim)",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const m = confirmarEliminar;
+                  setConfirmarEliminar(null);
+                  ejecutar(
+                    () => eliminarDefinitivo(m.id),
+                    () => router.refresh()
+                  );
+                }}
+                disabled={isPending}
+                className="flex-1 rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
+                style={{ background: "var(--red)", color: "#fff" }}
+              >
+                {isPending ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -249,21 +320,6 @@ function FilaMiembro({
         )}
       </div>
       <div className="flex flex-none items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function AvatarLetra({ alias }: { alias: string }) {
-  const inicial = alias.trim().charAt(0).toUpperCase();
-  return (
-    <div
-      className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm font-bold"
-      style={{
-        background: "rgba(255,255,255,0.08)",
-        color: "var(--gold)",
-      }}
-    >
-      {inicial}
     </div>
   );
 }

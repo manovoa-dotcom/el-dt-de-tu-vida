@@ -247,3 +247,59 @@ export async function agregarInvitado(
   revalidatePath("/config/plantel");
   return { ok: true, message: `Invitado "${alias}" agregado` };
 }
+// ────────────────────────────────────────────────────────────────
+// Eliminar definitivamente del grupo (borra TODO el historial en cascada)
+// ────────────────────────────────────────────────────────────────
+export async function eliminarDefinitivo(
+  memberId: string
+): Promise<ActionResult> {
+  const { supabase, groupId, error } = await requireAdmin();
+  if (error) return { ok: false, error };
+
+  // Verificar que el miembro pertenece al grupo
+  const { data: miembro } = await supabase
+    .from("group_members")
+    .select("id, display_name, status")
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .maybeSingle();
+
+  if (!miembro) return { ok: false, error: "Miembro no encontrado" };
+
+  if (miembro.status !== "baja") {
+    return {
+      ok: false,
+      error: "Solo se pueden eliminar definitivamente a miembros dados de baja primero. Usá Suspender.",
+    };
+  }
+
+  // Registrar en el historial de correcciones ANTES de borrar
+  await supabase.from("corrections").insert({
+    group_id: groupId,
+    entity: "otro",
+    entity_id: memberId,
+    description: `🗑️ Se eliminó definitivamente del grupo a ${miembro.display_name}. Todo su historial fue borrado.`,
+    before_data: { display_name: miembro.display_name, status: miembro.status },
+  });
+
+  // Borrar (cascade elimina todo lo relacionado)
+  const { error: err } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("id", memberId)
+    .eq("group_id", groupId);
+
+  if (err) {
+    console.error(err);
+    return { ok: false, error: "Error al eliminar" };
+  }
+
+  revalidatePath("/config/plantel");
+  revalidatePath("/inicio");
+  revalidatePath("/ranking");
+  revalidatePath("/convocatoria");
+  return {
+    ok: true,
+    message: `${miembro.display_name} eliminado del grupo`,
+  };
+}
