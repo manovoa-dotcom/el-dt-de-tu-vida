@@ -61,17 +61,14 @@ export default async function PartidoPage() {
 
     const ids = (miembrosActivos ?? []).map((m) => m.id);
 
-    // Quiénes ya armaron equipo
-    let armadosSet = new Set<string>();
-    if (ids.length > 0) {
-      const { data: teams } = await supabase
-        .from("fantasy_teams")
-        .select("dt_member_id")
-        .eq("match_id", partido.id)
-        .in("dt_member_id", ids);
+   // Quién ya armó equipo (vía RPC para saltar RLS)
+    const { data: teams } = await supabase.rpc("get_dts_que_armaron", {
+      p_match_id: partido.id,
+    });
 
-      armadosSet = new Set((teams ?? []).map((t) => t.dt_member_id));
-    }
+    const armadosSet = new Set<string>(
+      (teams ?? []).map((t: { dt_member_id: string }) => t.dt_member_id)
+    );
 
     // Perfiles
     const userIds = (miembrosActivos ?? [])
