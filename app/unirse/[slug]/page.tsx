@@ -6,7 +6,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import ImageCropper from "@/components/ImageCropper";
 import { createClient } from "@/lib/supabase/client";
-
+import { notificarNuevoPendiente } from "./actions";
 type Grupo = { id: string; name: string; slug: string };
 
 export default function UnirsePage() {
@@ -150,8 +150,25 @@ export default function UnirsePage() {
       }
     }
 
-    router.push("/perfil?bienvenida=1");
-    router.refresh();
+     // Notificar a los admins (no bloquea si falla)
+    if (grupo) {
+      try {
+        await notificarNuevoPendiente(grupo.id, alias.trim());
+      } catch (err) {
+        console.error("Error notificando a admins:", err);
+      }
+    }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session) {
+      router.push("/inicio");
+      router.refresh();
+    } else {
+      router.push("/login");
+    }
   }
 
   if (grupoLoading) {

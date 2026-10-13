@@ -12,7 +12,7 @@ export default async function ConfigPage() {
 
   const { data: membership } = await supabase
     .from("group_members")
-    .select("role")
+    .select("role, group_id")
     .eq("user_id", user.id)
     .eq("status", "activo")
     .limit(1)
@@ -29,7 +29,17 @@ export default async function ConfigPage() {
     );
   }
 
-   type Opcion = {
+  let pendientes = 0;
+  if (membership?.group_id) {
+    const { count } = await supabase
+      .from("group_members")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", membership.group_id)
+      .eq("status", "pendiente");
+    pendientes = count ?? 0;
+  }
+
+  type Opcion = {
     href: string;
     icon: string;
     title: string;
@@ -37,7 +47,7 @@ export default async function ConfigPage() {
     disabled?: boolean;
   };
 
- const opciones: Opcion[] = [
+  const opciones: Opcion[] = [
     {
       href: "/config/partido",
       icon: "📅",
@@ -54,7 +64,7 @@ export default async function ConfigPage() {
       href: "/config/items",
       icon: "⚽",
       title: "Ítems y puntos",
-      sub: "Qué suma puntos y cuánto vale cada uno",      
+      sub: "Qué suma puntos y cuánto vale cada uno",
     },
     {
       href: "/config/resultados",
@@ -140,6 +150,14 @@ export default async function ConfigPage() {
                   {op.sub}
                 </div>
               </div>
+              {op.href === "/config/plantel" && pendientes > 0 && (
+                <span
+                  className="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
+                  style={{ background: "var(--red)", color: "#fff" }}
+                >
+                  {pendientes}
+                </span>
+              )}
               <span style={{ color: "var(--dim)" }}>›</span>
             </Link>
           )

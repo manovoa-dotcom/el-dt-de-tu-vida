@@ -94,7 +94,7 @@ export default async function AppLayout({
 
   const hayPartidoJugado = !!algunPartidoJugado;
 
-  // Contar noticias no leídas
+    // Contar noticias no leídas y miembros pendientes (solo admin)
   const { data: miembro } = await supabase
     .from("group_members")
     .select("id, group_id")
@@ -102,6 +102,18 @@ export default async function AppLayout({
     .eq("status", "activo")
     .limit(1)
     .maybeSingle();
+
+// Contar miembros pendientes de aprobar (solo admins)
+  let pendientesCount = 0;
+  if (isAdmin && membership.group_id) {
+    const { count: cPend } = await supabase
+      .from("group_members")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", membership.group_id)
+      .eq("status", "pendiente");
+    pendientesCount = cPend ?? 0;
+  }
+
 
   let noLeidas = 0;
   if (miembro) {
@@ -139,7 +151,11 @@ export default async function AppLayout({
       />
       <AppBadge count={noLeidas} />
       {children}
-      <TabBar isAdmin={isAdmin} badgeInicio={noLeidas} />
+       <TabBar
+        isAdmin={isAdmin}
+        badgeInicio={noLeidas}
+        badgeConfig={pendientesCount}
+      />
       <OnboardingLayer hayPartidoJugado={hayPartidoJugado} />
     </div>
   );

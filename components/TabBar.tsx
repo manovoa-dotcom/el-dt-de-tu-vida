@@ -16,9 +16,15 @@ const TABS = [
 type Props = {
   isAdmin: boolean;
   badgeInicio?: number;
+  badgeConfig?: number;
 };
 
-export default function TabBar({ isAdmin, badgeInicio = 0 }: Props) {
+export default function TabBar({
+  isAdmin,
+  badgeInicio = 0,
+  badgeConfig = 0,
+}: Props) {
+
   const pathname = usePathname();
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
@@ -45,11 +51,17 @@ id="onboarding-tabbar"
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {tabs.map((t) => {
+               {tabs.map((t) => {
           const active = pathname.startsWith(t.href);
-          const mostrarBadge = t.href === "/inicio" && badgeInicio > 0;
+          const badge =
+            t.href === "/inicio"
+              ? badgeInicio
+              : t.href === "/config"
+              ? badgeConfig
+              : 0;
+          const mostrarBadge = badge > 0;
           return (
-                        <Link
+            <Link
               key={t.href}
               href={t.href}
               id={
@@ -71,7 +83,7 @@ id="onboarding-tabbar"
                       boxShadow: "0 0 0 2px #06120b",
                     }}
                   >
-                    {badgeInicio > 9 ? "9+" : badgeInicio}
+                    {badge > 9 ? "9+" : badge}
                   </span>
                 )}
               </div>
