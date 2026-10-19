@@ -318,6 +318,11 @@ function FilaMiembro({
             {m.real_name}
           </div>
         )}
+        {m.market_value !== null && (
+          <div className="text-xs font-semibold" style={{ color: "var(--gold)" }}>
+            Valor de mercado: ${m.market_value.toLocaleString("es-AR")}
+          </div>
+        )}
       </div>
       <div className="flex flex-none items-center gap-2">{children}</div>
     </div>

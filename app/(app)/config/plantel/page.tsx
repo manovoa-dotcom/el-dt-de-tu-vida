@@ -13,6 +13,7 @@ export type Miembro = {
   status: string;
   joined_at: string;
   photo_url: string | null;
+  market_value: number | null;
 };
 
 export default async function PlantelPage() {
@@ -72,6 +73,29 @@ export default async function PlantelPage() {
     );
   }
 
+  // Último valor de mercado disponible en la temporada activa.
+  const { data: season } = await supabase
+    .from("seasons")
+    .select("id")
+    .eq("group_id", membership.group_id)
+    .eq("status", "activa")
+    .maybeSingle();
+
+  let valoresMercado: Record<string, number> = {};
+  if (season) {
+    const { data: valores } = await supabase
+      .from("market_values")
+      .select("member_id, value, match_number")
+      .eq("season_id", season.id)
+      .order("match_number", { ascending: false });
+
+    for (const valor of valores ?? []) {
+      if (valoresMercado[valor.member_id] === undefined) {
+        valoresMercado[valor.member_id] = valor.value;
+      }
+    }
+  }
+
   const miembros: Miembro[] = (miembrosRaw ?? []).map((m) => ({
     id: m.id,
     user_id: m.user_id,
@@ -82,6 +106,7 @@ export default async function PlantelPage() {
     status: m.status,
     joined_at: m.joined_at,
     photo_url: m.user_id ? perfiles[m.user_id]?.photo_url ?? null : null,
+    market_value: valoresMercado[m.id] ?? null,
   }));
 
   return (
