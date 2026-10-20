@@ -152,6 +152,12 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="-mt-2 text-right">
+              <Link href="/recuperar-clave" className="text-sm font-semibold" style={{ color: "var(--gold)" }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+
             {error && (
               <div
                 className="rounded-xl px-3 py-2 text-sm"
