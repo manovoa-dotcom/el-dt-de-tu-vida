@@ -41,6 +41,10 @@ export default async function AppLayout({
           <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
             Pedile a alguien del grupo que te pase el link de invitación.
           </p>
+          <p className="mt-3 text-xs" style={{ color: "var(--dim)" }}>
+            Cuenta conectada: {user.email ?? "correo no disponible"}
+          </p>
+          <LogoutButton label="Salir y volver a ingresar" />
         </div>
       </main>
     );
