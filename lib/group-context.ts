@@ -22,14 +22,38 @@ export async function getUserGroupMemberships(
   userId: string,
   statuses: MembershipStatus[] = ["activo"]
 ): Promise<GroupMembershipContext[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("group_members")
-    .select("*, group:groups(id, name, slug)")
+    .select("*")
     .eq("user_id", userId)
     .in("status", statuses)
     .order("joined_at", { ascending: true });
 
-  return (data ?? []) as unknown as GroupMembershipContext[];
+  if (error) {
+    console.error("No se pudieron cargar las membresías del usuario:", error);
+    return [];
+  }
+
+  const memberships = (data ?? []) as unknown as GroupMembershipContext[];
+  if (memberships.length === 0) return memberships;
+
+  // Cargar los nombres por separado: si la relación anidada grupos/membresías
+  // falla, no debemos ocultar una membresía válida ni bloquear el acceso.
+  const groupIds = [...new Set(memberships.map((membership) => membership.group_id))];
+  const { data: groups, error: groupsError } = await supabase
+    .from("groups")
+    .select("id, name, slug")
+    .in("id", groupIds);
+
+  if (groupsError) {
+    console.error("No se pudieron cargar los nombres de los grupos:", groupsError);
+  }
+
+  const groupsById = new Map((groups ?? []).map((group) => [group.id, group]));
+  return memberships.map((membership) => ({
+    ...membership,
+    group: groupsById.get(membership.group_id) ?? null,
+  }));
 }
 
 export async function getCurrentGroupMembership(
