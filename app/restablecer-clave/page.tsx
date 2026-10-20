@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RestablecerClavePage() {
-  const router = useRouter();
   const [clave, setClave] = useState("");
   const [repetirClave, setRepetirClave] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +34,9 @@ export default function RestablecerClavePage() {
       return;
     }
 
+    // Termina la sesión temporal de recuperación para que el usuario vuelva
+    // a ingresar con la clave nueva y cargue su membresía habitual.
+    await supabase.auth.signOut({ scope: "local" });
     setActualizada(true);
     setLoading(false);
   }
@@ -51,9 +52,8 @@ export default function RestablecerClavePage() {
         <div className="rounded-2xl p-7" style={{ background: "var(--g1)", border: "1px solid rgba(255,255,255,0.06)" }}>
           {actualizada ? (
             <div className="text-center">
-              <p className="text-sm" style={{ color: "var(--gold)" }}>Tu contraseña se cambió correctamente.</p>
-              <button type="button" onClick={() => { router.push("/inicio"); router.refresh(); }} className="mt-5 w-full rounded-xl py-3 text-sm font-bold" style={{ background: "var(--or)", color: "#fff" }}>Continuar</button>
-              <Link href="/login" className="mt-4 inline-block text-sm font-semibold" style={{ color: "var(--gold)" }}>Ir a ingresar</Link>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--gold)" }}>Tu contraseña se cambió correctamente. Ahora ingresá con tu correo y la contraseña nueva.</p>
+              <Link href="/login" className="mt-5 inline-block w-full rounded-xl py-3 text-sm font-bold" style={{ background: "var(--or)", color: "#fff" }}>Ir a ingresar</Link>
             </div>
           ) : (
             <form onSubmit={guardarClave} className="space-y-4">
