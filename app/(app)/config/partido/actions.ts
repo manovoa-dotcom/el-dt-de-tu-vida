@@ -232,3 +232,78 @@ export async function avisarConvocatoria(
     message: `Aviso enviado a ${userIds.length} miembro${userIds.length !== 1 ? "s" : ""}`,
   };
 }
+
+export async function avisarEquiposPendientes(
+  matchId: string,
+  memberIds: string[]
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
+  if (!membership || membership.role !== "admin") {
+    return { ok: false, error: "Solo el admin puede enviar avisos" };
+  }
+
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, number, group_id, status")
+    .eq("id", matchId)
+    .eq("group_id", membership.group_id)
+    .maybeSingle();
+  if (!match || match.status !== "programada") {
+    return { ok: false, error: "El partido ya no está disponible" };
+  }
+
+  const requestedIds = [...new Set(memberIds.filter((id) => typeof id === "string"))];
+  if (requestedIds.length === 0) {
+    return { ok: false, error: "Seleccioná al menos una persona" };
+  }
+
+  const { data: teams, error: teamsError } = await supabase.rpc("get_dts_que_armaron", {
+    p_match_id: matchId,
+  });
+  if (teamsError) {
+    console.error("Error comprobando equipos armados:", teamsError);
+    return { ok: false, error: "No pudimos comprobar quién ya armó su equipo" };
+  }
+  const armedIds = new Set(
+    (teams ?? []).map((team: { dt_member_id: string }) => team.dt_member_id)
+  );
+
+  const { data: recipients, error: recipientsError } = await supabase
+    .from("group_members")
+    .select("id, user_id")
+    .eq("group_id", membership.group_id)
+    .eq("status", "activo")
+    .not("user_id", "is", null)
+    .in("id", requestedIds);
+  if (recipientsError) {
+    console.error("Error buscando destinatarios:", recipientsError);
+    return { ok: false, error: "No pudimos cargar las personas seleccionadas" };
+  }
+
+  const userIds = [...new Set(
+    (recipients ?? [])
+      .filter((recipient) => !armedIds.has(recipient.id))
+      .map((recipient) => recipient.user_id)
+      .filter((id): id is string => !!id)
+  )];
+  if (userIds.length === 0) {
+    return { ok: false, error: "Las personas seleccionadas ya armaron o no pueden recibir avisos" };
+  }
+
+  await enviarNotificacion(userIds, {
+    title: `⚽ Armá tu equipo · Fecha ${match.number}`,
+    body: "No te olvides de armar tu equipo de fantasía para el próximo partido.",
+    url: "/convocatoria",
+  });
+
+  return {
+    ok: true,
+    message: `Aviso enviado a ${userIds.length} persona${userIds.length !== 1 ? "s" : ""}`,
+  };
+}
