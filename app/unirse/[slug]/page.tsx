@@ -87,6 +87,9 @@ export default function UnirsePage() {
       return setError("La clave necesita 6 caracteres mínimo");
     if (!usarCuentaExistente && clave !== clave2) return setError("Las claves no coinciden");
 
+    const grupoActual = grupo;
+    if (!grupoActual) return setError("No se pudo cargar el grupo. Recargá la página y probá de nuevo.");
+
     setLoading(true);
     const supabase = createClient();
 
@@ -117,7 +120,7 @@ export default function UnirsePage() {
       }
 
       const { error: joinError } = await supabase.rpc("accept_group_invite_for_existing_user", {
-        p_group_id: grupo.id,
+        p_group_id: grupoActual.id,
         p_display_name: alias,
       });
       if (joinError) {
@@ -127,7 +130,7 @@ export default function UnirsePage() {
       }
 
       try {
-        await notificarNuevoPendiente(grupo.id, alias.trim());
+        await notificarNuevoPendiente(grupoActual.id, alias.trim());
       } catch (err) {
         console.error("Error notificando a admins:", err);
       }
