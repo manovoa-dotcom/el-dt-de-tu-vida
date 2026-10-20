@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { activarGrupoAction } from "@/app/actions";
 
 export default function RegistroAdminGrupoClient({
   token,
@@ -20,6 +21,7 @@ export default function RegistroAdminGrupoClient({
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [usarCuentaExistente, setUsarCuentaExistente] = useState(false);
 
   async function registrar(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,14 +35,47 @@ export default function RegistroAdminGrupoClient({
     const password = claveRef.current?.value ?? "";
     const passwordConfirm = clave2Ref.current?.value ?? "";
 
-    if (realName.length < 2) return setError("Escribí tu nombre real");
     if (groupName.length < 2 || groupName.length > 40) return setError("El nombre del grupo debe tener entre 2 y 40 caracteres");
+    if (!usarCuentaExistente && realName.length < 2) return setError("Escribí tu nombre real");
     if (alias.length < 2) return setError("El alias debe tener al menos 2 caracteres");
     if (password.length < 6) return setError("La clave debe tener al menos 6 caracteres");
-    if (password !== passwordConfirm) return setError("Las claves no coinciden");
+    if (!usarCuentaExistente && password !== passwordConfirm) return setError("Las claves no coinciden");
 
     setLoading(true);
     const supabase = createClient();
+
+    if (usarCuentaExistente) {
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) {
+        setError("No se pudo ingresar. Revisá el correo y la clave de esa cuenta.");
+        setLoading(false);
+        return;
+      }
+
+      const { data: groupId, error: acceptError } = await supabase.rpc("accept_admin_group_invite", {
+        p_token: token,
+        p_group_name: groupName,
+        p_display_name: alias,
+      });
+      if (acceptError || typeof groupId !== "string") {
+        console.error("Error aceptando invitación de administrador:", acceptError);
+        setError(acceptError?.message ?? "No se pudo aceptar la invitación. Revisá que el enlace siga vigente.");
+        setLoading(false);
+        return;
+      }
+
+      const groupActivated = await activarGrupoAction(groupId);
+      if (!groupActivated) {
+        setError("El grupo se creó, pero no pudimos seleccionarlo. Cerrá sesión y volvé a ingresar.");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/inicio");
+      router.refresh();
+      return;
+    }
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -56,13 +91,13 @@ export default function RegistroAdminGrupoClient({
 
     if (signUpError) {
       console.error(signUpError);
-      setError("No se pudo crear la cuenta. Revisá el email y probá de nuevo.");
+      setError("No se pudo crear la cuenta. Revisá el email. Si ya tenés una cuenta, elegí “Ya tengo cuenta”.");
       setLoading(false);
       return;
     }
 
     if (data.user && !data.user.identities?.length) {
-      setError("Ese email ya tiene una cuenta. Usá un email nuevo para este grupo.");
+      setError("Ese correo ya tiene una cuenta. Elegí “Ya tengo cuenta” para entrar con ese mismo correo.");
       setLoading(false);
       return;
     }
@@ -87,11 +122,11 @@ export default function RegistroAdminGrupoClient({
 
       <form onSubmit={registrar} className="mt-5 space-y-4">
         <Campo label="Email" refInput={emailRef} type="email" autoComplete="email" placeholder="tu@email.com" />
-        <Campo label="Tu nombre real" refInput={nombreRef} type="text" autoComplete="name" placeholder="Ej: Mariano García" />
+        {!usarCuentaExistente && <Campo label="Tu nombre real" refInput={nombreRef} type="text" autoComplete="name" placeholder="Ej: Mariano García" />}
         <Campo label="Nombre del grupo" refInput={grupoRef} type="text" autoComplete="organization" placeholder="Ej: Fútbol de los jueves" maxLength={40} />
         <Campo label="Tu alias" refInput={aliasRef} type="text" autoComplete="nickname" placeholder="Cómo te verá el grupo" />
-        <Campo label="Clave (6 caracteres o más)" refInput={claveRef} type="password" autoComplete="new-password" />
-        <Campo label="Repetir clave" refInput={clave2Ref} type="password" autoComplete="new-password" />
+        <Campo label={usarCuentaExistente ? "Clave de tu cuenta" : "Clave (6 caracteres o más)"} refInput={claveRef} type="password" autoComplete={usarCuentaExistente ? "current-password" : "new-password"} />
+        {!usarCuentaExistente && <Campo label="Repetir clave" refInput={clave2Ref} type="password" autoComplete="new-password" />}
 
         {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(226,59,77,0.15)", color: "#ffc1c9" }}>{error}</p>}
         {exito && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "rgba(242,182,50,0.15)", color: "var(--gold)" }}>{exito}</p>}
@@ -102,6 +137,15 @@ export default function RegistroAdminGrupoClient({
           </button>
         )}
       </form>
+
+      <button
+        type="button"
+        onClick={() => { setUsarCuentaExistente((actual) => !actual); setError(null); setExito(null); }}
+        className="mt-4 w-full text-center text-sm font-semibold"
+        style={{ color: "var(--gold)" }}
+      >
+        {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: entrar con mi correo"}
+      </button>
 
       <p className="mt-5 border-t pt-4 text-center text-xs" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--dim)" }}>
         ¿Ya tenés una cuenta? <Link href="/login" className="font-semibold" style={{ color: "var(--gold)" }}>Ingresar</Link>

@@ -1,4 +1,5 @@
 "use server";
+import { getCurrentGroupMembership } from "@/lib/group-context";
 
 import { enviarNotificacion, getUserIdDeMiembros } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
@@ -28,13 +29,7 @@ export async function guardarResultados(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!membership || membership.role !== "admin") {
     return { ok: false, error: "Solo el admin puede cargar resultados" };

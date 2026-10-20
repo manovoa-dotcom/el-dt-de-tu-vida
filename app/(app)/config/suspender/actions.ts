@@ -1,4 +1,5 @@
 "use server";
+import { getCurrentGroupMembership } from "@/lib/group-context";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -20,13 +21,7 @@ export async function suspenderFecha(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!membership || membership.role !== "admin") {
     return { ok: false, error: "Solo el admin puede suspender fechas" };
@@ -115,13 +110,7 @@ export async function reactivarFecha(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!membership || membership.role !== "admin") {
     return { ok: false, error: "Solo el admin puede reactivar fechas" };

@@ -1,3 +1,4 @@
+import { getCurrentGroupMembership } from "@/lib/group-context";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import PerfilClient from "./PerfilClient";
@@ -21,13 +22,7 @@ export default async function PerfilPage({
     .eq("id", user.id)
     .maybeSingle();
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("id, role, status, group:groups (name)")
-    .eq("user_id", user.id)
-    .in("status", ["activo", "pendiente"])
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo", "pendiente"]);
 
   const grupo = membership?.group as unknown as { name: string } | null;
 

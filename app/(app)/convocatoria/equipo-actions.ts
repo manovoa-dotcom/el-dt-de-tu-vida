@@ -1,4 +1,5 @@
 "use server";
+import { getCurrentGroupMembership } from "@/lib/group-context";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -21,13 +22,7 @@ export async function guardarEquipo(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: miembro } = await supabase
-    .from("group_members")
-    .select("id, group_id")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const miembro = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!miembro) return { ok: false, error: "No estás activo en el grupo" };
 
@@ -157,13 +152,7 @@ export async function borrarEquipo(matchId: string): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: miembro } = await supabase
-    .from("group_members")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const miembro = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!miembro) return { ok: false, error: "No estás activo en el grupo" };
 

@@ -18,6 +18,8 @@ export default function UnirsePage() {
   const [grupoLoading, setGrupoLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [usarCuentaExistente, setUsarCuentaExistente] = useState(false);
+  const [solicitudEnviada, setSolicitudEnviada] = useState(false);
 
   // Foto
   const fileRef = useRef<HTMLInputElement>(null);
@@ -79,11 +81,11 @@ export default function UnirsePage() {
     const clave2 = clave2Ref.current?.value ?? "";
 
     if (!email) return setError("Poné tu email");
-    if (realName.length < 2) return setError("Poné tu nombre real");
+    if (!usarCuentaExistente && realName.length < 2) return setError("Poné tu nombre real");
     if (alias.length < 2) return setError("El alias es muy corto");
     if (clave.length < 6)
       return setError("La clave necesita 6 caracteres mínimo");
-    if (clave !== clave2) return setError("Las claves no coinciden");
+    if (!usarCuentaExistente && clave !== clave2) return setError("Las claves no coinciden");
 
     setLoading(true);
     const supabase = createClient();
@@ -106,7 +108,36 @@ export default function UnirsePage() {
       return;
     }
 
-    // Crear cuenta
+    if (usarCuentaExistente) {
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: clave });
+      if (loginError) {
+        setError("No se pudo ingresar. Revisá el correo y la clave de esa cuenta.");
+        setLoading(false);
+        return;
+      }
+
+      const { error: joinError } = await supabase.rpc("accept_group_invite_for_existing_user", {
+        p_group_id: grupo.id,
+        p_display_name: alias,
+      });
+      if (joinError) {
+        setError(joinError.message);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await notificarNuevoPendiente(grupo.id, alias.trim());
+      } catch (err) {
+        console.error("Error notificando a admins:", err);
+      }
+
+      setSolicitudEnviada(true);
+      setLoading(false);
+      return;
+    }
+
+    // Crear cuenta nueva
     const { data: signUpData, error: errSignUp } = await supabase.auth.signUp({
       email,
       password: clave,
@@ -121,7 +152,13 @@ export default function UnirsePage() {
 
     if (errSignUp) {
       console.error(errSignUp);
-      setError(errSignUp.message);
+      setError("No se pudo crear la cuenta. Revisá el correo. Si ya tenés una cuenta, elegí “Ya tengo cuenta”.");
+      setLoading(false);
+      return;
+    }
+
+    if (signUpData.user && !signUpData.user.identities?.length) {
+      setError("Ese correo ya tiene una cuenta. Elegí “Ya tengo cuenta” para entrar con ese mismo correo.");
       setLoading(false);
       return;
     }
@@ -233,10 +270,10 @@ export default function UnirsePage() {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <h2 className="bebas text-2xl">Crear cuenta</h2>
+          <h2 className="bebas text-2xl">{usarCuentaExistente ? "Ingresar y pedir acceso" : "Crear cuenta"}</h2>
 
           {/* Foto */}
-          <div className="mt-5 flex flex-col items-center">
+          {!usarCuentaExistente && <div className="mt-5 flex flex-col items-center">
             <button
               type="button"
               onClick={abrirSelectorFoto}
@@ -270,9 +307,14 @@ export default function UnirsePage() {
               onChange={onFileChange}
               className="hidden"
             />
-          </div>
+          </div>}
 
-          <form
+          {solicitudEnviada ? (
+            <div className="mt-5 rounded-xl p-4 text-sm" style={{ background: "rgba(242,182,50,0.12)", color: "var(--gold)" }}>
+              Tu solicitud fue enviada. Cuando el admin la apruebe, este grupo aparecerá en el selector dentro de la aplicación.
+              <Link href="/inicio" className="mt-3 block font-bold" style={{ color: "var(--gold)" }}>Volver a mis grupos</Link>
+            </div>
+          ) : <form
             onSubmit={(e) => {
               e.preventDefault();
               handleCrear();
@@ -303,7 +345,7 @@ export default function UnirsePage() {
               />
             </div>
 
-            <div>
+            {!usarCuentaExistente && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -327,7 +369,7 @@ export default function UnirsePage() {
               <p className="mt-1 text-[11px]" style={{ color: "var(--dim)" }}>
                 Solo lo ve el admin del grupo.
               </p>
-            </div>
+            </div>}
 
             <div>
               <label
@@ -363,14 +405,14 @@ export default function UnirsePage() {
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
               >
-                Clave (6+ caracteres)
+                {usarCuentaExistente ? "Clave de tu cuenta" : "Clave (6+ caracteres)"}
               </label>
               <input
                 ref={claveRef}
                 type="password"
                 minLength={6}
                 maxLength={30}
-                autoComplete="new-password"
+                autoComplete={usarCuentaExistente ? "current-password" : "new-password"}
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
@@ -385,7 +427,7 @@ export default function UnirsePage() {
               />
             </div>
 
-            <div>
+            {!usarCuentaExistente && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -410,7 +452,7 @@ export default function UnirsePage() {
                   color: "var(--tx)",
                 }}
               />
-            </div>
+            </div>}
 
             {error && (
               <div
@@ -431,9 +473,18 @@ export default function UnirsePage() {
               className="w-full rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
               style={{ background: "var(--or)", color: "#fff" }}
             >
-              {loading ? "Creando..." : "Crear cuenta"}
+              {loading ? (usarCuentaExistente ? "Ingresando..." : "Creando...") : (usarCuentaExistente ? "Ingresar y pedir acceso" : "Crear cuenta")}
             </button>
-          </form>
+          </form>}
+
+          {!solicitudEnviada && <button
+            type="button"
+            onClick={() => { setUsarCuentaExistente((actual) => !actual); setError(null); }}
+            className="mt-4 w-full text-center text-sm font-semibold"
+            style={{ color: "var(--gold)" }}
+          >
+            {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: entrar con mi correo"}
+          </button>}
 
           <p
             className="mt-5 text-center text-xs leading-relaxed"
@@ -449,14 +500,7 @@ export default function UnirsePage() {
               color: "var(--dim)",
             }}
           >
-            ¿Ya tenés cuenta?{" "}
-            <Link
-              href="/login"
-              className="font-semibold"
-              style={{ color: "var(--gold)" }}
-            >
-              Entrar
-            </Link>
+            ¿Ya tenés cuenta? Usá la opción de arriba para entrar con tu correo sin crear otra cuenta.
           </div>
         </div>
       </div>

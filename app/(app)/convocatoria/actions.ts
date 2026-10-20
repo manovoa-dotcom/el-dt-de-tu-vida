@@ -1,4 +1,5 @@
 "use server";
+import { getCurrentGroupMembership } from "@/lib/group-context";
 
 import {
   enviarNotificacion,
@@ -22,13 +23,7 @@ async function getMiembroActivo() {
   } = await supabase.auth.getUser();
   if (!user) return { supabase, miembro: null, error: "No autenticado" };
 
-  const { data: miembro } = await supabase
-    .from("group_members")
-    .select("id, group_id, role, status, display_name")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const miembro = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!miembro)
     return { supabase, miembro: null, error: "No estás activo en el grupo" };
@@ -323,12 +318,7 @@ export async function anotarInvitados(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: admin } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .maybeSingle();
+  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!admin || admin.role !== "admin") {
     return { ok: false, error: "Solo el admin puede anotar invitados" };
@@ -391,12 +381,7 @@ export async function quitarInvitado(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: admin } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .maybeSingle();
+  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!admin || admin.role !== "admin") {
     return { ok: false, error: "Solo el admin puede quitar invitados" };
@@ -461,12 +446,7 @@ export async function moverAEspera(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: admin } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .maybeSingle();
+  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!admin || admin.role !== "admin") {
     return { ok: false, error: "Solo el admin puede mover jugadores" };
@@ -543,12 +523,7 @@ export async function subirAConvocados(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "No autenticado" };
 
-  const { data: admin } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .maybeSingle();
+  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!admin || admin.role !== "admin") {
     return { ok: false, error: "Solo el admin puede hacer esto" };

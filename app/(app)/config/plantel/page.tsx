@@ -1,3 +1,4 @@
+import { getCurrentGroupMembership } from "@/lib/group-context";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -23,13 +24,7 @@ export default async function PlantelPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("group_id, role")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!membership || membership.role !== "admin") {
     return (

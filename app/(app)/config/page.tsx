@@ -1,3 +1,4 @@
+import { getCurrentGroupMembership } from "@/lib/group-context";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -11,13 +12,7 @@ export default async function ConfigPage() {
 
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select("role, group_id")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (membership?.role !== "admin") {
     return (

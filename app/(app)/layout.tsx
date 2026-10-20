@@ -5,6 +5,8 @@ import ProfileFab from "@/components/ProfileFab";
 import LogoutButton from "@/components/LogoutButton";
 import AppBadge from "@/components/AppBadge";
 import OnboardingLayer from "@/components/OnboardingLayer";
+import GroupSwitcher from "@/components/GroupSwitcher";
+import { getCurrentGroupMembership, getUserGroupMemberships } from "@/lib/group-context";
 
 export default async function AppLayout({
   children,
@@ -18,13 +20,8 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-   const { data: membership } = await supabase
-    .from("group_members")
-    .select("role, status, display_name, group_id")
-    .eq("user_id", user.id)
-    .in("status", ["activo", "pendiente"])
-    .limit(1)
-    .maybeSingle();
+  const memberships = await getUserGroupMemberships(supabase, user.id, ["activo", "pendiente"]);
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo", "pendiente"]);
 
   // Sin grupo
   if (!membership) {
@@ -95,13 +92,7 @@ export default async function AppLayout({
   const hayPartidoJugado = !!algunPartidoJugado;
 
     // Contar noticias no leídas y miembros pendientes (solo admin)
-  const { data: miembro } = await supabase
-    .from("group_members")
-    .select("id, group_id")
-    .eq("user_id", user.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
+  const miembro = membership?.status === "activo" ? membership : null;
 
 // Contar miembros pendientes de aprobar (solo admins)
   let pendientesCount = 0;
@@ -145,6 +136,10 @@ export default async function AppLayout({
           "radial-gradient(circle at 80% -10%, #1e6a47 0, transparent 45%)",
       }}
     >
+      <GroupSwitcher
+        groups={memberships.filter((m) => m.status === "activo").map((m) => ({ id: m.group_id, name: m.group?.name ?? "Grupo" }))}
+        activeGroupId={membership.group_id}
+      />
       <ProfileFab
         alias={membership.display_name}
         photoUrl={perfil?.photo_url ?? null}

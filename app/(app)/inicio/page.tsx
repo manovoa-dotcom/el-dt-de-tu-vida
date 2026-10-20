@@ -1,3 +1,4 @@
+import { getCurrentGroupMembership } from "@/lib/group-context";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import BotonAyuda from "@/components/BotonAyuda";
@@ -22,19 +23,7 @@ export default async function InicioPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("group_members")
-    .select(`
-      id,
-      display_name,
-      role,
-      status,
-      group:groups (id, name, slug)
-    `)
-    .eq("user_id", user.id)
-    .in("status", ["activo", "pendiente"])
-    .limit(1)
-    .maybeSingle();
+  const membership = await getCurrentGroupMembership(supabase, user.id, ["activo", "pendiente"]);
 
   if (!membership || !membership.group) return null;
 
