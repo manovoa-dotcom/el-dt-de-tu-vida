@@ -42,7 +42,7 @@ export default async function CrearGrupoAdminPage({
             </Link>
           </div>
         ) : (
-          <RegistroAdminGrupoClient token={token} nombreGrupo={invitacion.group_name} />
+          <RegistroAdminGrupoClient token={token} />
         )}
       </div>
     </main>

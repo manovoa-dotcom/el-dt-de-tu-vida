@@ -7,14 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegistroAdminGrupoClient({
   token,
-  nombreGrupo,
 }: {
   token: string;
-  nombreGrupo: string;
 }) {
   const router = useRouter();
   const emailRef = useRef<HTMLInputElement>(null);
   const nombreRef = useRef<HTMLInputElement>(null);
+  const grupoRef = useRef<HTMLInputElement>(null);
   const aliasRef = useRef<HTMLInputElement>(null);
   const claveRef = useRef<HTMLInputElement>(null);
   const clave2Ref = useRef<HTMLInputElement>(null);
@@ -29,11 +28,13 @@ export default function RegistroAdminGrupoClient({
 
     const email = emailRef.current?.value.trim() ?? "";
     const realName = nombreRef.current?.value.trim() ?? "";
+    const groupName = grupoRef.current?.value.trim() ?? "";
     const alias = aliasRef.current?.value.trim() ?? "";
     const password = claveRef.current?.value ?? "";
     const passwordConfirm = clave2Ref.current?.value ?? "";
 
     if (realName.length < 2) return setError("Escribí tu nombre real");
+    if (groupName.length < 2 || groupName.length > 40) return setError("El nombre del grupo debe tener entre 2 y 40 caracteres");
     if (alias.length < 2) return setError("El alias debe tener al menos 2 caracteres");
     if (password.length < 6) return setError("La clave debe tener al menos 6 caracteres");
     if (password !== passwordConfirm) return setError("Las claves no coinciden");
@@ -47,6 +48,7 @@ export default function RegistroAdminGrupoClient({
         data: {
           display_name: alias,
           real_name: realName,
+          admin_group_name: groupName,
           admin_group_token: token,
         },
       },
@@ -78,14 +80,15 @@ export default function RegistroAdminGrupoClient({
   return (
     <div className="rounded-2xl p-7" style={{ background: "var(--g1)", border: "1px solid rgba(255,255,255,0.06)" }}>
       <p className="text-xs" style={{ color: "var(--dim)" }}>Vas a administrar</p>
-      <h2 className="bebas text-2xl" style={{ color: "var(--gold)" }}>{nombreGrupo}</h2>
+      <h2 className="bebas text-2xl" style={{ color: "var(--gold)" }}>Tu nuevo grupo</h2>
       <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
-        Creá tu cuenta. Vas a quedar como admin y podrás invitar a tus amigos desde la configuración del grupo.
+        Elegí el nombre del grupo y creá tu cuenta. Vas a quedar como admin y podrás invitar a tus amigos desde la configuración.
       </p>
 
       <form onSubmit={registrar} className="mt-5 space-y-4">
         <Campo label="Email" refInput={emailRef} type="email" autoComplete="email" placeholder="tu@email.com" />
         <Campo label="Tu nombre real" refInput={nombreRef} type="text" autoComplete="name" placeholder="Ej: Mariano García" />
+        <Campo label="Nombre del grupo" refInput={grupoRef} type="text" autoComplete="organization" placeholder="Ej: Fútbol de los jueves" maxLength={40} />
         <Campo label="Tu alias" refInput={aliasRef} type="text" autoComplete="nickname" placeholder="Cómo te verá el grupo" />
         <Campo label="Clave (6 caracteres o más)" refInput={claveRef} type="password" autoComplete="new-password" />
         <Campo label="Repetir clave" refInput={clave2Ref} type="password" autoComplete="new-password" />
@@ -113,12 +116,14 @@ function Campo({
   type,
   autoComplete,
   placeholder,
+  maxLength,
 }: {
   label: string;
   refInput: React.RefObject<HTMLInputElement | null>;
   type: string;
   autoComplete?: string;
   placeholder?: string;
+  maxLength?: number;
 }) {
   return (
     <label className="block">
@@ -129,7 +134,7 @@ function Campo({
         autoComplete={autoComplete}
         placeholder={placeholder}
         required
-        maxLength={type === "text" ? 60 : undefined}
+        maxLength={maxLength ?? (type === "text" ? 60 : undefined)}
         className="w-full rounded-xl px-4 py-3 text-sm outline-none"
         style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--tx)" }}
       />

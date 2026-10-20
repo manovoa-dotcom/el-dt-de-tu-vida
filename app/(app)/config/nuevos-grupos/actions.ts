@@ -9,14 +9,7 @@ export type CrearInvitacionResult = {
   error?: string;
 };
 
-export async function crearInvitacionAdminGrupo(
-  nombreGrupo: string
-): Promise<CrearInvitacionResult> {
-  const nombre = nombreGrupo.trim();
-  if (nombre.length < 2 || nombre.length > 40) {
-    return { ok: false, error: "El nombre debe tener entre 2 y 40 caracteres" };
-  }
-
+export async function crearInvitacionAdminGrupo(): Promise<CrearInvitacionResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +20,7 @@ export async function crearInvitacionAdminGrupo(
   }
 
   const { data: token, error } = await supabase.rpc("create_admin_group_invite", {
-    p_group_name: nombre,
+    p_group_name: null,
   });
 
   if (error || typeof token !== "string") {

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { crearInvitacionAdminGrupo } from "./actions";
 
 export default function NuevosGruposClient() {
-  const [nombre, setNombre] = useState("");
   const [enlace, setEnlace] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -14,7 +13,7 @@ export default function NuevosGruposClient() {
     setMensaje(null);
     setEnlace(null);
     startTransition(async () => {
-      const result = await crearInvitacionAdminGrupo(nombre);
+      const result = await crearInvitacionAdminGrupo();
       if (!result.ok || !result.token) {
         setMensaje(result.error ?? "No se pudo crear el enlace");
         return;
@@ -40,24 +39,16 @@ export default function NuevosGruposClient() {
         className="rounded-2xl p-4"
         style={{ background: "var(--g1)", border: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--dim)" }}>
-          Nombre del nuevo grupo
-        </label>
-        <input
-          value={nombre}
-          onChange={(event) => setNombre(event.target.value)}
-          maxLength={40}
-          placeholder="Ej: Fútbol de los jueves"
-          className="w-full rounded-xl px-4 py-3 text-sm outline-none"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--tx)" }}
-        />
+        <p className="text-sm" style={{ color: "var(--tx)" }}>
+          Generá un enlace para la persona que va a administrar el grupo. Esa persona elegirá el nombre al crear su cuenta.
+        </p>
         <p className="mt-2 text-[11px]" style={{ color: "var(--dim)" }}>
           El enlace vence en 14 días y sirve para crear una sola cuenta de admin.
         </p>
         <button
           type="button"
           onClick={crear}
-          disabled={isPending || nombre.trim().length < 2}
+          disabled={isPending}
           className="mt-4 w-full rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
           style={{ background: "var(--or)", color: "#fff" }}
         >
