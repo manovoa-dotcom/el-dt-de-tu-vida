@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { isPlatformAdmin } from "@/lib/platform-admin";
 
 export default async function ConfigPage() {
   const supabase = await createClient();
@@ -48,6 +49,14 @@ export default async function ConfigPage() {
   };
 
   const opciones: Opcion[] = [
+    ...(isPlatformAdmin(user.email)
+      ? [{
+          href: "/config/nuevos-grupos",
+          icon: "➕",
+          title: "Crear un nuevo grupo",
+          sub: "Generar un enlace para su primer administrador",
+        }]
+      : []),
     {
       href: "/config/partido",
       icon: "📅",
