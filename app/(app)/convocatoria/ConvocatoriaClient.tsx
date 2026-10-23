@@ -6,9 +6,8 @@ import Avatar from "@/components/Avatar";
 import type { Fila, MiPick } from "./page";
 import {
   anotarse,
-  anotarMiembro,
   darseDeBaja,
-  anotarInvitados,
+  anotarMiembrosSeleccionados,
   quitarInvitado,
   moverAEspera,
   subirAConvocados,
@@ -52,8 +51,9 @@ export default function ConvocatoriaClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
-  const [verNoAnotados, setVerNoAnotados] = useState(false);
+  const [verUsuarios, setVerUsuarios] = useState(false);
   const [verInvitados, setVerInvitados] = useState(false);
+  const [usuariosSel, setUsuariosSel] = useState<Set<string>>(new Set());
   const [invitadosSel, setInvitadosSel] = useState<Set<string>>(new Set());
   const [ajusteSel, setAjusteSel] = useState<Set<string>>(new Set());
   const [esperaSel, setEsperaSel] = useState<Set<string>>(new Set());
@@ -227,6 +227,10 @@ export default function ConvocatoriaClient({
   const invitadosNoAnotados = noAnotados.filter((c) => c.is_invitado);
   const todosInvitados = [...invitadosAnotados, ...invitadosNoAnotados];
   const mostrarInvitados = isAdmin && todosInvitados.length > 0;
+  const usuariosAnotados = jugables.filter((c) => c.tieneCuenta && !c.is_invitado);
+  const usuariosNoAnotados = noAnotados.filter((c) => c.tieneCuenta && !c.is_invitado);
+  const todosUsuarios = [...usuariosAnotados, ...usuariosNoAnotados];
+  const mostrarUsuarios = isAdmin && todosUsuarios.length > 0;
 
   const libres = cupo - anotadosCount;
   const seleccionadosCount = invitadosSel.size;
@@ -244,11 +248,23 @@ export default function ConvocatoriaClient({
     });
   }
 
+  function toggleUsuario(id: string) {
+    setUsuariosSel((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else {
+        if (copia.size >= libres) return prev;
+        copia.add(id);
+      }
+      return copia;
+    });
+  }
+
   function anotarSeleccionados() {
     const ids = Array.from(invitadosSel);
     if (ids.length === 0) return;
     startTransition(async () => {
-      const res = await anotarInvitados(matchId, ids);
+      const res = await anotarMiembrosSeleccionados(matchId, ids);
       if (res.ok) {
         setToast(res.message ?? "Invitados anotados");
         setInvitadosSel(new Set());
@@ -260,19 +276,22 @@ export default function ConvocatoriaClient({
     });
   }
 
-  function quitar(memberId: string, alias: string) {
+  function anotarUsuariosSeleccionados() {
+    const ids = Array.from(usuariosSel);
+    if (ids.length === 0) return;
     startTransition(async () => {
-      const res = await quitarInvitado(matchId, memberId);
-      setToast(res.ok ? `${alias} quitado del partido` : res.error ?? "Error");
+      const res = await anotarMiembrosSeleccionados(matchId, ids);
+      setToast(res.ok ? res.message ?? "Usuarios anotados" : res.error ?? "Error");
+      if (res.ok) setUsuariosSel(new Set());
       setTimeout(() => setToast(null), 2500);
       router.refresh();
     });
   }
 
-  function anotarDesdeAdmin(c: Fila) {
+  function quitar(memberId: string, alias: string) {
     startTransition(async () => {
-      const res = await anotarMiembro(matchId, c.member_id);
-      setToast(res.ok ? `${c.alias} anotado` : res.error ?? "Error");
+      const res = await quitarInvitado(matchId, memberId);
+      setToast(res.ok ? `${alias} quitado del partido` : res.error ?? "Error");
       setTimeout(() => setToast(null), 2500);
       router.refresh();
     });
@@ -730,6 +749,74 @@ export default function ConvocatoriaClient({
         </>
       )}
 
+      {/* Usuarios con cuenta, que el admin puede anotar */}
+      {mostrarUsuarios && (
+        <>
+          <button
+            type="button"
+            onClick={() => setVerUsuarios((v) => !v)}
+            className="mt-5 flex w-full items-center gap-2 px-4 py-2 text-left"
+          >
+            <span className="bebas text-xl tracking-wider">
+              USUARIOS ({todosUsuarios.length})
+            </span>
+            <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "var(--or)", color: "#fff" }}>
+              ADMIN
+            </span>
+            <span className="text-xs transition" style={{ color: "var(--dim)", transform: verUsuarios ? "rotate(180deg)" : "rotate(0)" }}>
+              ▼
+            </span>
+          </button>
+
+          {verUsuarios && (
+            <div className="mx-3 mt-1 overflow-hidden rounded-2xl" style={{ background: "var(--g1)" }}>
+              <div className="px-4 py-3 text-[11px]" style={{ color: "var(--dim)" }}>
+                Seleccioná usuarios con cuenta para anotarlos ({libres} lugar{libres !== 1 ? "es" : ""} libre{libres !== 1 ? "s" : ""}).
+              </div>
+              {usuariosNoAnotados.length > 0 ? (
+                <>
+                  {usuariosNoAnotados.map((c) => {
+                    const sel = usuariosSel.has(c.member_id);
+                    const bloqueado = libres <= 0 || (!sel && usuariosSel.size >= libres);
+                    return (
+                      <button
+                        key={c.member_id}
+                        type="button"
+                        onClick={() => toggleUsuario(c.member_id)}
+                        disabled={bloqueado || isPending}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-left transition"
+                        style={{ background: sel ? "rgba(242,182,50,0.1)" : "transparent", borderTop: "1px solid rgba(255,255,255,0.04)", opacity: bloqueado && !sel ? 0.4 : 1 }}
+                      >
+                        <Avatar alias={c.alias} photoUrl={c.photo_url} size={32} />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium">{c.alias}</span>
+                        <span className="flex h-5 w-5 flex-none items-center justify-center rounded-md border text-[11px] font-bold" style={{ borderColor: sel ? "var(--gold)" : "rgba(255,255,255,0.25)", background: sel ? "var(--gold)" : "transparent", color: sel ? "#12261c" : "transparent" }}>
+                          ✓
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <div className="p-3">
+                    <button
+                      type="button"
+                      onClick={anotarUsuariosSeleccionados}
+                      disabled={usuariosSel.size === 0 || isPending}
+                      className="w-full rounded-xl py-2 text-sm font-bold transition disabled:opacity-40"
+                      style={{ background: "var(--or)", color: "#fff" }}
+                    >
+                      {isPending ? "Anotando..." : `Anotar ${usuariosSel.size} usuario${usuariosSel.size !== 1 ? "s" : ""}`}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="px-4 pb-4 text-[11px]" style={{ color: "var(--dim)" }}>
+                  Todos los usuarios disponibles ya están anotados o en espera.
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Invitados */}
       {mostrarInvitados && (
         <>
@@ -891,41 +978,6 @@ export default function ConvocatoriaClient({
         </>
       )}
 
-      {/* No anotados */}
-      {noAnotados.length > 0 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setVerNoAnotados((v) => !v)}
-            className="mt-5 flex w-full items-center gap-2 px-4 py-2 text-left"
-          >
-            <span className="bebas text-xl tracking-wider">NO ANOTADOS ({noAnotados.length})</span>
-            <span
-              className="text-xs transition"
-              style={{
-                color: "var(--dim)",
-                transform: verNoAnotados ? "rotate(180deg)" : "rotate(0)",
-              }}
-            >
-              ▼
-            </span>
-          </button>
-          {verNoAnotados && (
-            <div className="mt-1">
-              {noAnotados.map((c) => (
-                <FilaNoAnotado
-                  key={c.member_id}
-                  c={c}
-                  isAdmin={isAdmin}
-                  sinCupo={libres <= 0}
-                  isPending={isPending}
-                  onAnotar={() => anotarDesdeAdmin(c)}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }
@@ -1076,82 +1128,5 @@ function FilaEspera({
         </span>
       )}
     </button>
-  );
-}
-
-function FilaNoAnotado({
-  c,
-  isAdmin,
-  sinCupo,
-  isPending,
-  onAnotar,
-}: {
-  c: Fila;
-  isAdmin: boolean;
-  sinCupo: boolean;
-  isPending: boolean;
-  onAnotar: () => void;
-}) {
-  const racha = c.racha_ausencias;
-  const mostrarRacha = !c.is_invitado && racha >= 2;
-  const colorRacha =
-    racha >= 5 ? "var(--red)" : racha >= 3 ? "var(--or)" : "var(--gold)";
-
-   return (
-    <div
-      id={c.is_me ? "onboarding-botones-ts" : undefined}
-      className="flex items-center gap-3 px-4 py-2"
-      style={{
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        background: c.is_me
-          ? "linear-gradient(90deg, rgba(242,182,50,0.15), transparent)"
-          : undefined,
-      }}
-    >
-      <Avatar alias={c.alias} photoUrl={c.photo_url} size={36} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-semibold" style={{ color: "var(--dim)" }}>
-            {c.alias}
-          </span>
-          {c.is_me && (
-            <span className="text-[10px]" style={{ color: "var(--gold)" }}>
-              · vos
-            </span>
-          )}
-          {c.is_invitado && (
-            <span
-              className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-              style={{ background: "var(--or)", color: "#fff" }}
-            >
-              INV
-            </span>
-          )}
-        </div>
-        {mostrarRacha && (
-          <div className="text-[11px] font-medium" style={{ color: colorRacha }}>
-            {racha >= 5 ? "🔥" : racha >= 3 ? "🟠" : "🟡"} Hace {racha} fechas que no se
-            anota
-          </div>
-        )}
-      </div>
-      {!isAdmin && !mostrarRacha && (
-        <span className="text-[11px]" style={{ color: "var(--dim)" }}>
-          —
-        </span>
-      )}
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={onAnotar}
-          disabled={isPending || sinCupo}
-          className="rounded-lg border px-2.5 py-1 text-[10px] font-bold transition disabled:opacity-40"
-          style={{ borderColor: "var(--gold)", color: "var(--gold)" }}
-          title={sinCupo ? "El cupo está completo" : `Anotar a ${c.alias}`}
-        >
-          {isPending ? "..." : "Anotar"}
-        </button>
-      )}
-    </div>
   );
 }

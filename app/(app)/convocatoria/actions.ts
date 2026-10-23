@@ -166,11 +166,14 @@ export async function anotarse(matchId: string): Promise<ActionResult> {
   }
 }
 
-// Anotar directamente a un miembro desde la convocatoria (solo admin).
-export async function anotarMiembro(
+// Anotar miembros e invitados seleccionados desde la convocatoria (solo admin).
+export async function anotarMiembrosSeleccionados(
   matchId: string,
-  memberId: string
+  memberIds: string[]
 ): Promise<ActionResult> {
+  const ids = Array.from(new Set(memberIds));
+  if (ids.length === 0) return { ok: false, error: "No seleccionaste a nadie" };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -194,29 +197,34 @@ export async function anotarMiembro(
     return { ok: false, error: "La convocatoria ya no está abierta" };
   }
 
-  const { data: miembro } = await supabase
+  const { data: miembros } = await supabase
     .from("group_members")
     .select("id, status")
-    .eq("id", memberId)
+    .in("id", ids)
     .eq("group_id", admin.group_id)
-    .maybeSingle();
+    .in("status", ["activo", "invitado"]);
 
-  if (!miembro || (miembro.status !== "activo" && miembro.status !== "invitado")) {
-    return { ok: false, error: "El jugador no pertenece al plantel activo" };
+  if (!miembros || miembros.length !== ids.length) {
+    return { ok: false, error: "Algún seleccionado no pertenece al plantel activo" };
   }
 
-  const { data: existente } = await supabase
+  const { data: asistencias } = await supabase
     .from("attendance")
-    .select("id, status")
+    .select("id, member_id, status")
     .eq("match_id", matchId)
-    .eq("member_id", memberId)
-    .maybeSingle();
+    .in("member_id", ids);
 
-  if (existente?.status === "anotado" || existente?.status === "presente") {
-    return { ok: false, error: "Ese jugador ya está anotado" };
-  }
-  if (existente?.status === "lista_espera") {
-    return { ok: false, error: "Ese jugador ya está en lista de espera" };
+  const asistenciaPorMiembro = new Map(
+    (asistencias ?? []).map((asistencia) => [asistencia.member_id, asistencia])
+  );
+  for (const id of ids) {
+    const estado = asistenciaPorMiembro.get(id)?.status;
+    if (estado === "anotado" || estado === "presente") {
+      return { ok: false, error: "Alguno de los seleccionados ya está anotado" };
+    }
+    if (estado === "lista_espera") {
+      return { ok: false, error: "Alguno de los seleccionados ya está en lista de espera" };
+    }
   }
 
   const { count: anotados } = await supabase
@@ -225,13 +233,19 @@ export async function anotarMiembro(
     .eq("match_id", matchId)
     .in("status", ["anotado", "presente"]);
 
-  if ((anotados ?? 0) >= match.cupo) {
-    return { ok: false, error: "El cupo está completo; no hay lugares libres" };
+  const libres = match.cupo - (anotados ?? 0);
+  if (ids.length > libres) {
+    return {
+      ok: false,
+      error: `Solo hay ${libres} lugar${libres !== 1 ? "es" : ""} libre${libres !== 1 ? "s" : ""}`,
+    };
   }
 
   const ahora = new Date().toISOString();
-  const { error: err } = existente
-    ? await supabase
+  for (const id of ids) {
+    const existente = asistenciaPorMiembro.get(id);
+    const { error: err } = existente
+      ? await supabase
         .from("attendance")
         .update({
           status: "anotado",
@@ -240,20 +254,24 @@ export async function anotarMiembro(
           resolved_at: null,
         })
         .eq("id", existente.id)
-    : await supabase.from("attendance").insert({
-        match_id: matchId,
-        member_id: memberId,
-        status: "anotado",
-      });
+      : await supabase.from("attendance").insert({
+          match_id: matchId,
+          member_id: id,
+          status: "anotado",
+        });
 
-  if (err) {
-    console.error(err);
-    return { ok: false, error: "No se pudo anotar al jugador" };
+    if (err) {
+      console.error(err);
+      return { ok: false, error: "No se pudo anotar a los seleccionados" };
+    }
   }
 
   revalidatePath("/convocatoria");
   revalidatePath("/inicio");
-  return { ok: true, message: "Jugador anotado" };
+  return {
+    ok: true,
+    message: `${ids.length} ${ids.length === 1 ? "persona anotada" : "personas anotadas"}`,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -390,72 +408,6 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
   revalidatePath("/convocatoria");
   revalidatePath("/inicio");
   return { ok: true, message: "Te diste de baja" };
-}
-
-// ────────────────────────────────────────────────────────────────
-// Anotar varios invitados a la vez (solo admin)
-// ────────────────────────────────────────────────────────────────
-export async function anotarInvitados(
-  matchId: string,
-  memberIds: string[]
-): Promise<ActionResult> {
-  if (memberIds.length === 0)
-    return { ok: false, error: "No elegiste invitados" };
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "No autenticado" };
-
-  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
-
-  if (!admin || admin.role !== "admin") {
-    return { ok: false, error: "Solo el admin puede anotar invitados" };
-  }
-
-  const { data: match } = await supabase
-    .from("matches")
-    .select("cupo, group_id")
-    .eq("id", matchId)
-    .maybeSingle();
-
-  if (!match || match.group_id !== admin.group_id) {
-    return { ok: false, error: "Partido no encontrado" };
-  }
-
-  const { count: anotados } = await supabase
-    .from("attendance")
-    .select("id", { count: "exact", head: true })
-    .eq("match_id", matchId)
-    .in("status", ["anotado", "presente"]);
-
-  const libres = match.cupo - (anotados ?? 0);
-  if (memberIds.length > libres) {
-    return {
-      ok: false,
-      error: `Solo quedan ${libres} lugar${libres !== 1 ? "es" : ""}`,
-    };
-  }
-
-  const insert = memberIds.map((mid) => ({
-    match_id: matchId,
-    member_id: mid,
-    status: "anotado" as const,
-  }));
-
-  const { error: err } = await supabase.from("attendance").insert(insert);
-  if (err) {
-    console.error(err);
-    return { ok: false, error: "Error al anotar los invitados" };
-  }
-
-  revalidatePath("/convocatoria");
-  revalidatePath("/inicio");
-  return {
-    ok: true,
-    message: `${memberIds.length} invitado${memberIds.length !== 1 ? "s" : ""} anotado${memberIds.length !== 1 ? "s" : ""}`,
-  };
 }
 
 // ────────────────────────────────────────────────────────────────

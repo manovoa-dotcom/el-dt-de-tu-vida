@@ -10,6 +10,7 @@ export type Fila = {
   real_name: string | null;
   photo_url: string | null;
   valor: number;
+  tieneCuenta: boolean;
   is_me: boolean;
   is_invitado: boolean;
   attendance_status: string | null;
@@ -176,6 +177,7 @@ export default async function ConvocatoriaPage() {
       real_name: perfil?.real_name ?? null,
       photo_url: perfil?.photo_url ?? null,
       valor: valoresMap.get(m.id) ?? 0,
+      tieneCuenta: m.user_id !== null,
       is_me: m.id === membership.id,
       is_invitado: m.status === "invitado",
       attendance_status: asist?.status ?? null,
