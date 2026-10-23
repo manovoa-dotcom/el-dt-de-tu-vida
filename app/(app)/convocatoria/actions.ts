@@ -166,6 +166,96 @@ export async function anotarse(matchId: string): Promise<ActionResult> {
   }
 }
 
+// Anotar directamente a un miembro desde la convocatoria (solo admin).
+export async function anotarMiembro(
+  matchId: string,
+  memberId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
+  if (!admin || admin.role !== "admin") {
+    return { ok: false, error: "Solo el admin puede anotar a otros miembros" };
+  }
+
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id, group_id, cupo, status")
+    .eq("id", matchId)
+    .eq("group_id", admin.group_id)
+    .maybeSingle();
+
+  if (!match) return { ok: false, error: "Partido no encontrado" };
+  if (match.status !== "programada") {
+    return { ok: false, error: "La convocatoria ya no está abierta" };
+  }
+
+  const { data: miembro } = await supabase
+    .from("group_members")
+    .select("id, status")
+    .eq("id", memberId)
+    .eq("group_id", admin.group_id)
+    .maybeSingle();
+
+  if (!miembro || (miembro.status !== "activo" && miembro.status !== "invitado")) {
+    return { ok: false, error: "El jugador no pertenece al plantel activo" };
+  }
+
+  const { data: existente } = await supabase
+    .from("attendance")
+    .select("id, status")
+    .eq("match_id", matchId)
+    .eq("member_id", memberId)
+    .maybeSingle();
+
+  if (existente?.status === "anotado" || existente?.status === "presente") {
+    return { ok: false, error: "Ese jugador ya está anotado" };
+  }
+  if (existente?.status === "lista_espera") {
+    return { ok: false, error: "Ese jugador ya está en lista de espera" };
+  }
+
+  const { count: anotados } = await supabase
+    .from("attendance")
+    .select("id", { count: "exact", head: true })
+    .eq("match_id", matchId)
+    .in("status", ["anotado", "presente"]);
+
+  if ((anotados ?? 0) >= match.cupo) {
+    return { ok: false, error: "El cupo está completo; no hay lugares libres" };
+  }
+
+  const ahora = new Date().toISOString();
+  const { error: err } = existente
+    ? await supabase
+        .from("attendance")
+        .update({
+          status: "anotado",
+          waitlist_order: null,
+          signed_up_at: ahora,
+          resolved_at: null,
+        })
+        .eq("id", existente.id)
+    : await supabase.from("attendance").insert({
+        match_id: matchId,
+        member_id: memberId,
+        status: "anotado",
+      });
+
+  if (err) {
+    console.error(err);
+    return { ok: false, error: "No se pudo anotar al jugador" };
+  }
+
+  revalidatePath("/convocatoria");
+  revalidatePath("/inicio");
+  return { ok: true, message: "Jugador anotado" };
+}
+
 // ────────────────────────────────────────────────────────────────
 // Darse de baja (con noticia automática)
 // ────────────────────────────────────────────────────────────────

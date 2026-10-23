@@ -6,6 +6,7 @@ import Avatar from "@/components/Avatar";
 import type { Fila, MiPick } from "./page";
 import {
   anotarse,
+  anotarMiembro,
   darseDeBaja,
   anotarInvitados,
   quitarInvitado,
@@ -263,6 +264,15 @@ export default function ConvocatoriaClient({
     startTransition(async () => {
       const res = await quitarInvitado(matchId, memberId);
       setToast(res.ok ? `${alias} quitado del partido` : res.error ?? "Error");
+      setTimeout(() => setToast(null), 2500);
+      router.refresh();
+    });
+  }
+
+  function anotarDesdeAdmin(c: Fila) {
+    startTransition(async () => {
+      const res = await anotarMiembro(matchId, c.member_id);
+      setToast(res.ok ? `${c.alias} anotado` : res.error ?? "Error");
       setTimeout(() => setToast(null), 2500);
       router.refresh();
     });
@@ -903,7 +913,14 @@ export default function ConvocatoriaClient({
           {verNoAnotados && (
             <div className="mt-1">
               {noAnotados.map((c) => (
-                <FilaNoAnotado key={c.member_id} c={c} />
+                <FilaNoAnotado
+                  key={c.member_id}
+                  c={c}
+                  isAdmin={isAdmin}
+                  sinCupo={libres <= 0}
+                  isPending={isPending}
+                  onAnotar={() => anotarDesdeAdmin(c)}
+                />
               ))}
             </div>
           )}
@@ -1062,7 +1079,19 @@ function FilaEspera({
   );
 }
 
-function FilaNoAnotado({ c }: { c: Fila }) {
+function FilaNoAnotado({
+  c,
+  isAdmin,
+  sinCupo,
+  isPending,
+  onAnotar,
+}: {
+  c: Fila;
+  isAdmin: boolean;
+  sinCupo: boolean;
+  isPending: boolean;
+  onAnotar: () => void;
+}) {
   const racha = c.racha_ausencias;
   const mostrarRacha = !c.is_invitado && racha >= 2;
   const colorRacha =
@@ -1106,10 +1135,22 @@ function FilaNoAnotado({ c }: { c: Fila }) {
           </div>
         )}
       </div>
-      {!mostrarRacha && (
+      {!isAdmin && !mostrarRacha && (
         <span className="text-[11px]" style={{ color: "var(--dim)" }}>
           —
         </span>
+      )}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={onAnotar}
+          disabled={isPending || sinCupo}
+          className="rounded-lg border px-2.5 py-1 text-[10px] font-bold transition disabled:opacity-40"
+          style={{ borderColor: "var(--gold)", color: "var(--gold)" }}
+          title={sinCupo ? "El cupo está completo" : `Anotar a ${c.alias}`}
+        >
+          {isPending ? "..." : "Anotar"}
+        </button>
       )}
     </div>
   );
