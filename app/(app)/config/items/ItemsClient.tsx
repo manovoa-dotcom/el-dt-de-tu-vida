@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { guardarItems } from "./actions";
+import { crearItem, guardarItems } from "./actions";
 import type { Item } from "./page";
 
 export default function ItemsClient({
@@ -28,6 +28,13 @@ export default function ItemsClient({
 
   const [form, setForm] = useState(inicial);
   const [guardado, setGuardado] = useState(false);
+  const [nuevoLabel, setNuevoLabel] = useState("");
+  const [nuevoTipo, setNuevoTipo] = useState<"multiple" | "unica">("multiple");
+  const [nuevoPuntos, setNuevoPuntos] = useState(1);
+
+  useEffect(() => {
+    setForm(inicial);
+  }, [inicial]);
 
   const hayCambios = useMemo(() => {
     if (form.length !== inicial.length) return true;
@@ -88,6 +95,29 @@ export default function ItemsClient({
       } else {
         mostrarToast(res.error ?? "Error");
       }
+    });
+  }
+
+  function agregarItem() {
+    if (hayCambios) {
+      mostrarToast("Guardá los cambios actuales antes de agregar un ítem");
+      return;
+    }
+    startTransition(async () => {
+      const res = await crearItem({
+        label: nuevoLabel,
+        selection_type: nuevoTipo,
+        points: nuevoPuntos,
+      });
+      if (!res.ok) {
+        mostrarToast(res.error ?? "Error al agregar el ítem");
+        return;
+      }
+      setNuevoLabel("");
+      setNuevoTipo("multiple");
+      setNuevoPuntos(1);
+      mostrarToast("Ítem agregado");
+      router.refresh();
     });
   }
 
@@ -167,6 +197,73 @@ export default function ItemsClient({
           Los ítems activos son los que aparecen en la carga de resultados.
           Darle valores distintos a cada uno ayuda a evitar empates.
         </p>
+      </div>
+
+      {/* Crear un ítem nuevo */}
+      <div
+        className="mb-3 rounded-2xl p-4"
+        style={{ background: "var(--g1)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div className="bebas mb-3 text-lg tracking-wide">AGREGAR ÍTEM</div>
+        <label className="mb-1 block text-[11px]" style={{ color: "var(--dim)" }}>
+          Nombre
+        </label>
+        <input
+          type="text"
+          value={nuevoLabel}
+          onChange={(e) => setNuevoLabel(e.target.value)}
+          maxLength={60}
+          placeholder="Ej.: Mejor asistencia"
+          disabled={bloqueado || isPending}
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none disabled:opacity-50"
+          style={{ background: "rgba(255,255,255,0.05)", color: "var(--tx)", border: "1px solid rgba(255,255,255,0.12)" }}
+        />
+        <div className="mt-3 flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <label className="mb-1 block text-[11px]" style={{ color: "var(--dim)" }}>
+              Tipo de selección
+            </label>
+            <select
+              value={nuevoTipo}
+              onChange={(e) => setNuevoTipo(e.target.value as "multiple" | "unica")}
+              disabled={bloqueado || isPending}
+              className="w-full rounded-lg px-2 py-2 text-xs outline-none disabled:opacity-50"
+              style={{ background: "var(--g2)", color: "var(--tx)", border: "1px solid rgba(255,255,255,0.12)" }}
+            >
+              <option value="multiple">Selección múltiple</option>
+              <option value="unica">Selección única</option>
+            </select>
+          </div>
+          <div className="w-20 flex-none">
+            <label className="mb-1 block text-[11px]" style={{ color: "var(--dim)" }}>
+              Puntos
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={nuevoPuntos}
+              onChange={(e) => setNuevoPuntos(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              disabled={bloqueado || isPending}
+              className="w-full rounded-lg px-2 py-2 text-center text-sm outline-none disabled:opacity-50"
+              style={{ background: "rgba(242,182,50,0.15)", border: "1px solid rgba(242,182,50,0.4)", color: "var(--gold)" }}
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={agregarItem}
+          disabled={bloqueado || isPending || nuevoLabel.trim().length < 2 || hayCambios}
+          className="mt-3 w-full rounded-xl py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ background: "var(--or)", color: "#fff" }}
+        >
+          {isPending ? "Guardando..." : "＋ Agregar ítem"}
+        </button>
+        {hayCambios && (
+          <p className="mt-2 text-[10px]" style={{ color: "var(--dim)" }}>
+            Guardá primero los cambios de la lista para agregar un ítem.
+          </p>
+        )}
       </div>
 
       {/* Lista de ítems */}

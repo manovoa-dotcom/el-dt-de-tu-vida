@@ -141,9 +141,8 @@ export default async function RankingPage() {
 
   const { data: items } = await supabase
     .from("items")
-    .select("id, key, label, points")
+    .select("id, key, label, points, active")
     .eq("group_id", membership.group_id)
-    .eq("active", true)
     .order("sort_order");
 
   const itemsList: ItemInfo[] = (items ?? []).map((i) => ({
@@ -393,7 +392,10 @@ export default async function RankingPage() {
     });
 
   // ─── Ranking Jugadores ───
-  const itemsPorId = new Map(itemsList.map((i) => [i.id, i]));
+  // Incluir ítems inactivos al sumar resultados históricos.
+  const itemsPorId = new Map(
+    (items ?? []).map((i) => [i.id, { key: i.key, label: i.label, points: i.points }])
+  );
 
   const jugadorTotales = new Map<string, number>();
   const jugadorPorItem = new Map<string, Record<string, number>>();
