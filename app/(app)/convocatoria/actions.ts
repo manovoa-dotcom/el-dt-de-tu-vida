@@ -413,7 +413,7 @@ export async function darseDeBaja(matchId: string): Promise<ActionResult> {
 // ────────────────────────────────────────────────────────────────
 // Quitar un invitado del partido (solo admin)
 // ────────────────────────────────────────────────────────────────
-export async function quitarInvitado(
+export async function quitarDeConvocatoria(
   matchId: string,
   memberId: string
 ): Promise<ActionResult> {
@@ -426,8 +426,17 @@ export async function quitarInvitado(
   const admin = await getCurrentGroupMembership(supabase, user.id, ["activo"]);
 
   if (!admin || admin.role !== "admin") {
-    return { ok: false, error: "Solo el admin puede quitar invitados" };
+    return { ok: false, error: "Solo el admin puede quitar personas de la convocatoria" };
   }
+
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("id", matchId)
+    .eq("group_id", admin.group_id)
+    .maybeSingle();
+
+  if (!match) return { ok: false, error: "Partido no encontrado" };
 
   const { data: target } = await supabase
     .from("group_members")
@@ -436,8 +445,19 @@ export async function quitarInvitado(
     .eq("group_id", admin.group_id)
     .maybeSingle();
 
-  if (!target || target.status !== "invitado") {
-    return { ok: false, error: "El miembro no es un invitado de este grupo" };
+  if (!target || (target.status !== "invitado" && target.status !== "activo")) {
+    return { ok: false, error: "La persona no pertenece al plantel activo" };
+  }
+
+  const { data: asistencia } = await supabase
+    .from("attendance")
+    .select("id, status")
+    .eq("match_id", matchId)
+    .eq("member_id", memberId)
+    .maybeSingle();
+
+  if (!asistencia || (asistencia.status !== "anotado" && asistencia.status !== "presente")) {
+    return { ok: false, error: "La persona ya no está anotada en este partido" };
   }
 
   const { error: err } = await supabase
@@ -448,7 +468,7 @@ export async function quitarInvitado(
 
   if (err) {
     console.error(err);
-    return { ok: false, error: "Error al quitar al invitado" };
+    return { ok: false, error: "Error al quitar a la persona del partido" };
   }
 
   // Sacarlo de todos los equipos que lo tenían (solo este partido)
@@ -468,7 +488,7 @@ export async function quitarInvitado(
 
   revalidatePath("/convocatoria");
   revalidatePath("/inicio");
-  return { ok: true, message: "Invitado quitado del partido" };
+  return { ok: true, message: "Persona quitada de la convocatoria" };
 }
 
 // ────────────────────────────────────────────────────────────────

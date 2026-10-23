@@ -8,7 +8,7 @@ import {
   anotarse,
   darseDeBaja,
   anotarMiembrosSeleccionados,
-  quitarInvitado,
+  quitarDeConvocatoria,
   moverAEspera,
   subirAConvocados,
   type ActionResult,
@@ -290,7 +290,7 @@ export default function ConvocatoriaClient({
 
   function quitar(memberId: string, alias: string) {
     startTransition(async () => {
-      const res = await quitarInvitado(matchId, memberId);
+      const res = await quitarDeConvocatoria(matchId, memberId);
       setToast(res.ok ? `${alias} quitado del partido` : res.error ?? "Error");
       setTimeout(() => setToast(null), 2500);
       router.refresh();
@@ -773,6 +773,37 @@ export default function ConvocatoriaClient({
               <div className="px-4 py-3 text-[11px]" style={{ color: "var(--dim)" }}>
                 Seleccioná usuarios con cuenta para anotarlos ({libres} lugar{libres !== 1 ? "es" : ""} libre{libres !== 1 ? "s" : ""}).
               </div>
+              {usuariosAnotados.length > 0 && (
+                <>
+                  <div
+                    className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "var(--dim)" }}
+                  >
+                    Ya anotados
+                  </div>
+                  {usuariosAnotados.map((c) => (
+                    <div
+                      key={c.member_id}
+                      className="flex items-center gap-3 px-4 py-2"
+                      style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+                    >
+                      <Avatar alias={c.alias} photoUrl={c.photo_url} size={32} />
+                      <div className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {c.alias}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => quitar(c.member_id, c.alias)}
+                        disabled={isPending}
+                        className="rounded-lg border px-2.5 py-1 text-[11px] font-bold transition disabled:opacity-50"
+                        style={{ borderColor: "var(--red)", color: "var(--red)" }}
+                      >
+                        ✕ Quitar
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
               {usuariosNoAnotados.length > 0 ? (
                 <>
                   {usuariosNoAnotados.map((c) => {
