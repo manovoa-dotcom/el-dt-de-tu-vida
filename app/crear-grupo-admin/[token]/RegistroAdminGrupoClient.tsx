@@ -97,7 +97,8 @@ export default function RegistroAdminGrupoClient({
     }
 
     if (data.user && !data.user.identities?.length) {
-      setError("Ese correo ya tiene una cuenta. Elegí “Ya tengo cuenta” para entrar con ese mismo correo.");
+      setUsarCuentaExistente(true);
+      setError("Ese correo ya tiene una cuenta. Ingresá la clave de esa cuenta y volvé a tocar “Entrar y crear grupo”.");
       setLoading(false);
       return;
     }
@@ -117,7 +118,9 @@ export default function RegistroAdminGrupoClient({
       <p className="text-xs" style={{ color: "var(--dim)" }}>Vas a administrar</p>
       <h2 className="bebas text-2xl" style={{ color: "var(--gold)" }}>Tu nuevo grupo</h2>
       <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
-        Elegí el nombre del grupo y creá tu cuenta. Vas a quedar como admin y podrás invitar a tus amigos desde la configuración.
+        {usarCuentaExistente
+          ? "Ingresá con tu cuenta actual. No necesitás crear otra cuenta para administrar un grupo nuevo."
+          : "Elegí el nombre del grupo y creá tu cuenta. Vas a quedar como admin y podrás invitar a tus amigos desde la configuración."}
       </p>
 
       <form onSubmit={registrar} className="mt-5 space-y-4">
@@ -133,7 +136,9 @@ export default function RegistroAdminGrupoClient({
 
         {!exito && (
           <button type="submit" disabled={loading} className="w-full rounded-xl py-3 text-sm font-bold disabled:opacity-50" style={{ background: "var(--or)", color: "#fff" }}>
-            {loading ? "Creando cuenta y grupo..." : "Crear mi cuenta de admin"}
+            {loading
+              ? usarCuentaExistente ? "Ingresando y creando grupo..." : "Creando cuenta y grupo..."
+              : usarCuentaExistente ? "Entrar y crear grupo" : "Crear mi cuenta de admin"}
           </button>
         )}
       </form>
@@ -144,7 +149,7 @@ export default function RegistroAdminGrupoClient({
         className="mt-4 w-full text-center text-sm font-semibold"
         style={{ color: "var(--gold)" }}
       >
-        {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: entrar con mi correo"}
+        {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: usar el mismo correo"}
       </button>
 
       <p className="mt-5 border-t pt-4 text-center text-xs" style={{ borderColor: "rgba(255,255,255,0.08)", color: "var(--dim)" }}>
