@@ -41,14 +41,17 @@ export default async function ConvocatoriaPage() {
   }
 
   // Próximo partido
- const { data: partido } = await supabase
+  const ultimaFechaValida = new Date();
+  ultimaFechaValida.setTime(ultimaFechaValida.getTime() - 24 * 60 * 60 * 1000);
+
+  const { data: partido } = await supabase
     .from("matches")
     .select(
       "id, number, kickoff_at, place, cupo, budget, status, baja_closes_at, teams_lock_at, convocatoria_opens_at, season_id"
     )
     .eq("group_id", membership.group_id)
     .eq("status", "programada")
-    .gte("kickoff_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .gte("kickoff_at", ultimaFechaValida.toISOString())
     .order("kickoff_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -97,7 +100,7 @@ export default async function ConvocatoriaPage() {
     (asistenciaActual ?? []).map((a) => [a.member_id, a])
   );
 
-  // Valores de mercado para esta fecha
+  // El cálculo de mercado ya conserva la última cotización de quien faltó.
   const { data: valores } = await supabase
     .from("market_values")
     .select("member_id, value")

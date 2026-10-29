@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { crearItem, guardarItems } from "./actions";
 import type { Item } from "./page";
@@ -26,15 +26,12 @@ export default function ItemsClient({
     [items]
   );
 
-  const [form, setForm] = useState(inicial);
+  const formSeed = items.map((i) => `${i.id}:${i.active}:${i.points}`).join("|");
+  const [form, setForm] = useState(() => inicial);
   const [guardado, setGuardado] = useState(false);
   const [nuevoLabel, setNuevoLabel] = useState("");
   const [nuevoTipo, setNuevoTipo] = useState<"multiple" | "unica">("multiple");
   const [nuevoPuntos, setNuevoPuntos] = useState(1);
-
-  useEffect(() => {
-    setForm(inicial);
-  }, [inicial]);
 
   const hayCambios = useMemo(() => {
     if (form.length !== inicial.length) return true;
@@ -129,7 +126,7 @@ export default function ItemsClient({
   else if (activosCount < 4) textoBoton = "Necesitás 4 ítems activos";
 
   return (
-    <div className="mx-3 mt-3">
+    <div key={formSeed} className="mx-3 mt-3">
       {toast && (
         <div
           className="fixed left-3 right-3 top-4 z-50 mx-auto max-w-md rounded-xl px-4 py-3 text-center text-sm font-bold shadow-2xl"

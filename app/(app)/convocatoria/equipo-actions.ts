@@ -81,7 +81,7 @@ if (suplentesValidos.length > 1) {
 const picksFinales = picksValidos;
 const memberIds = picksFinales.map((p) => p.member_id);
 
-  // Presupuesto
+  // Validar el presupuesto con los valores calculados para esta fecha.
   if (match.budget !== null) {
     const { data: valores } = await supabase
       .from("market_values")
@@ -90,8 +90,9 @@ const memberIds = picksFinales.map((p) => p.member_id);
       .eq("match_number", match.number)
       .in("member_id", memberIds);
 
-   const valoresMap = new Map((valores ?? []).map((v) => [v.member_id, v.value]));
-const total = picksFinales.reduce((s, p) => s + (valoresMap.get(p.member_id) ?? 0), 0);
+    const valoresMap = new Map((valores ?? []).map((v) => [v.member_id, v.value]));
+    const total = picksFinales.reduce((s, p) => s + (valoresMap.get(p.member_id) ?? 0), 0);
+
     if (total > match.budget) {
       return { ok: false, error: `Te pasaste del presupuesto (${total}/${match.budget})` };
     }

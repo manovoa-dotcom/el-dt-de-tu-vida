@@ -105,13 +105,6 @@ export default function ConvocatoriaClient({
     return JSON.stringify(arr);
   }, [picksDelServer]);
 
-  useEffect(() => {
-    setPicks(picksDelServer);
-    setPicksGuardados(picksDelServer);
-    setEstadoGuardado("idle");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverKey]);
-
   const titulares = useMemo(
     () =>
       Array.from(picks.entries())
@@ -378,7 +371,7 @@ export default function ConvocatoriaClient({
   }
 
   return (
-    <div>
+    <div key={serverKey}>
       {toast && (
         <div
           className="fixed left-3 right-3 top-4 z-50 mx-auto max-w-md rounded-xl px-4 py-3 text-center text-sm font-bold shadow-2xl"
@@ -682,6 +675,9 @@ export default function ConvocatoriaClient({
       >
         CONVOCADOS ({jugables.length})
       </div>
+      <p className="px-4 text-[11px]" style={{ color: "var(--dim)" }}>
+        Si un jugador faltó, conserva su última cotización.
+      </p>
       <div className="mt-1">
         {jugables.map((c) => (
           <FilaConvocado
