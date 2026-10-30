@@ -48,7 +48,7 @@ export async function guardarConfigGrupo(
     return { ok: false, error: "El Equipo Ideal del Año debe tener entre 5 y 11 jugadores" };
   }
 
-   const { error } = await supabase
+  const { data: grupoActualizado, error } = await supabase
     .from("groups")
     .update({
       name,
@@ -57,11 +57,20 @@ export async function guardarConfigGrupo(
       equipo_ideal_value: input.equipo_ideal_value,
       equipo_ideal_anio_size: input.equipo_ideal_anio_size,
     })
-    .eq("id", membership.group_id);
+    .eq("id", membership.group_id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(error);
     return { ok: false, error: "Error al guardar" };
+  }
+
+  if (!grupoActualizado) {
+    return {
+      ok: false,
+      error: "No se guardaron los cambios. Verificá que tengas permisos para modificar el grupo.",
+    };
   }
 
   // Recalcular valor de mercado del próximo partido automáticamente
