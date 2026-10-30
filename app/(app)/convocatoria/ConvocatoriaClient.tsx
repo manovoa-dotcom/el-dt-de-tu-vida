@@ -79,6 +79,10 @@ export default function ConvocatoriaClient({
     () => new Set(jugables.map((c) => c.member_id)),
     [jugables]
   );
+  const valoresPorId = useMemo(
+    () => new Map(jugables.map((c) => [c.member_id, c.valor])),
+    [jugables]
+  );
 
   const picksDelServer = useMemo(() => {
     const m = new Map<string, Slot>();
@@ -120,13 +124,12 @@ export default function ConvocatoriaClient({
   const titularesSet = new Set(titulares);
 
   const total = useMemo(() => {
-    let sum = 0;
-    for (const [id] of picks) {
-      const c = jugables.find((x) => x.member_id === id);
-      sum += c?.valor ?? 0;
-    }
-    return sum;
-  }, [picks, jugables]);
+    return Array.from(picks.keys()).reduce(
+      (sum, id) => sum + (valoresPorId.get(id) ?? 0),
+      0
+    );
+  }, [picks, valoresPorId]);
+  const sePasoDelPresupuesto = presupuesto !== null && total > presupuesto;
 
   const equipoArmado =
     titulares.length === titularesEsperados && suplente !== null;
@@ -181,6 +184,13 @@ export default function ConvocatoriaClient({
       if (m.get(id) === "titular") {
         m.delete(id);
       } else {
+        const totalActual = Array.from(m.keys()).reduce(
+          (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
+          0
+        );
+        if (!m.has(id) && presupuesto !== null && totalActual > presupuesto) {
+          return prev;
+        }
         let count = 0;
         for (const [, s] of m) if (s === "titular") count++;
         if (count >= titularesEsperados) return prev;
@@ -198,6 +208,13 @@ export default function ConvocatoriaClient({
       if (m.get(id) === "suplente") {
         m.delete(id);
       } else {
+        const totalActual = Array.from(m.keys()).reduce(
+          (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
+          0
+        );
+        if (!m.has(id) && presupuesto !== null && totalActual > presupuesto) {
+          return prev;
+        }
         for (const [k, v] of m) if (v === "suplente") m.delete(k);
         m.set(id, "suplente");
       }
@@ -689,6 +706,7 @@ export default function ConvocatoriaClient({
             onToggleTitular={() => toggleTitular(c.member_id)}
             onToggleSuplente={() => toggleSuplente(c.member_id)}
             bloqueado={equiposBloqueados}
+            bloquearNuevasSelecciones={sePasoDelPresupuesto}
           />
         ))}
         {jugables.length === 0 && (
@@ -1017,6 +1035,7 @@ function FilaConvocado({
   onToggleTitular,
   onToggleSuplente,
   bloqueado,
+  bloquearNuevasSelecciones,
 }: {
   c: Fila;
   esTitular: boolean;
@@ -1024,6 +1043,7 @@ function FilaConvocado({
   onToggleTitular: () => void;
   onToggleSuplente: () => void;
   bloqueado: boolean;
+  bloquearNuevasSelecciones: boolean;
 }) {
   return (
     <div
@@ -1060,13 +1080,20 @@ function FilaConvocado({
       <button
         type="button"
         onClick={onToggleTitular}
-        disabled={bloqueado}
+        disabled={
+          bloqueado ||
+          (bloquearNuevasSelecciones && !esTitular && !esSuplente)
+        }
         className="h-7 w-7 flex-none rounded-lg border text-xs font-bold transition"
         style={{
           background: esTitular ? "var(--or)" : "transparent",
           borderColor: esTitular ? "var(--or)" : "rgba(255,255,255,0.2)",
           color: esTitular ? "#fff" : "var(--dim)",
-          opacity: bloqueado ? 0.5 : 1,
+          opacity:
+            bloqueado ||
+            (bloquearNuevasSelecciones && !esTitular && !esSuplente)
+              ? 0.5
+              : 1,
         }}
       >
         T
@@ -1074,13 +1101,22 @@ function FilaConvocado({
       <button
         type="button"
         onClick={onToggleSuplente}
-        disabled={bloqueado || esTitular}
+        disabled={
+          bloqueado ||
+          esTitular ||
+          (bloquearNuevasSelecciones && !esTitular && !esSuplente)
+        }
         className="h-7 w-7 flex-none rounded-lg border text-xs font-bold transition"
         style={{
           background: esSuplente ? "var(--gold)" : "transparent",
           borderColor: esSuplente ? "var(--gold)" : "rgba(255,255,255,0.2)",
           color: esSuplente ? "#12261c" : "var(--dim)",
-          opacity: bloqueado || esTitular ? 0.3 : 1,
+          opacity:
+            bloqueado ||
+            esTitular ||
+            (bloquearNuevasSelecciones && !esTitular && !esSuplente)
+              ? 0.3
+              : 1,
         }}
       >
         S

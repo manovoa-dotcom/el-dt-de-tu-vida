@@ -26,7 +26,7 @@ export async function guardarEquipo(
 
   if (!miembro) return { ok: false, error: "No estás activo en el grupo" };
 
-    const { data: match } = await supabase
+  const { data: match } = await supabase
     .from("matches")
     .select("id, cupo, budget, teams_lock_at, convocatoria_opens_at, group_id, status, season_id, number")
     .eq("id", matchId)
@@ -38,7 +38,7 @@ export async function guardarEquipo(
     return { ok: false, error: "El partido no está abierto" };
   }
 
-    const ahora = new Date();
+  const ahora = new Date();
   const cierra = new Date(match.teams_lock_at);
 
   if (ahora >= cierra) {
@@ -76,6 +76,17 @@ export async function guardarEquipo(
 
   const picksFinales = picks;
   const memberIds = picksFinales.map((p) => p.member_id);
+  const { data: teamExistente, error: errorTeamExistente } = await supabase
+    .from("fantasy_teams")
+    .select("id, fantasy_picks(member_id)")
+    .eq("match_id", matchId)
+    .eq("dt_member_id", miembro.id)
+    .maybeSingle();
+
+  if (errorTeamExistente) {
+    console.error(errorTeamExistente);
+    return { ok: false, error: "No se pudo validar el equipo actual" };
+  }
 
   if (memberIds.length > 0) {
     const { data: asistencias, error: errorAsistencias } = await supabase
@@ -99,30 +110,49 @@ export async function guardarEquipo(
   // Validar el presupuesto con los valores calculados para esta fecha.
   const equipoTieneTitularesYSuplente =
     titulares.length === titularesEsperados && suplentes.length === 1;
-  if (match.budget !== null && equipoTieneTitularesYSuplente) {
-    const { data: valores } = await supabase
-      .from("market_values")
-      .select("member_id, value")
-      .eq("season_id", match.season_id)
-      .eq("match_number", match.number)
-      .in("member_id", memberIds);
+  if (match.budget !== null) {
+    const picksActuales = teamExistente?.fantasy_picks ?? [];
+    const idsActuales = new Set(picksActuales.map((p) => p.member_id));
+    const idsAConsultar = Array.from(new Set([...memberIds, ...idsActuales]));
+    let valoresMap = new Map<string, number>();
+    if (idsAConsultar.length > 0) {
+      const { data: valores, error: errorValores } = await supabase
+        .from("market_values")
+        .select("member_id, value")
+        .eq("season_id", match.season_id)
+        .eq("match_number", match.number)
+        .in("member_id", idsAConsultar);
 
-    const valoresMap = new Map((valores ?? []).map((v) => [v.member_id, v.value]));
+      if (errorValores) {
+        console.error(errorValores);
+        return { ok: false, error: "No se pudo validar el presupuesto" };
+      }
+
+      valoresMap = new Map((valores ?? []).map((v) => [v.member_id, v.value]));
+    }
+
     const total = picksFinales.reduce((s, p) => s + (valoresMap.get(p.member_id) ?? 0), 0);
+    const totalActual = picksActuales.reduce(
+      (s, p) => s + (valoresMap.get(p.member_id) ?? 0),
+      0
+    );
 
-    if (total > match.budget) {
+    if (
+      totalActual > match.budget &&
+      picksFinales.some((p) => !idsActuales.has(p.member_id))
+    ) {
+      return {
+        ok: false,
+        error: `No podés agregar jugadores: ya te pasaste del presupuesto (${totalActual}/${match.budget})`,
+      };
+    }
+
+    if (equipoTieneTitularesYSuplente && total > match.budget) {
       return { ok: false, error: `Te pasaste del presupuesto (${total}/${match.budget})` };
     }
   }
 
   // Borrar equipo anterior
-  const { data: teamExistente } = await supabase
-    .from("fantasy_teams")
-    .select("id")
-    .eq("match_id", matchId)
-    .eq("dt_member_id", miembro.id)
-    .maybeSingle();
-
   let teamId: string;
 
   if (teamExistente) {
