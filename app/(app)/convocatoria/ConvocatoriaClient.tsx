@@ -129,7 +129,6 @@ export default function ConvocatoriaClient({
       0
     );
   }, [picks, valoresPorId]);
-  const sePasoDelPresupuesto = presupuesto !== null && total > presupuesto;
 
   const equipoArmado =
     titulares.length === titularesEsperados && suplente !== null;
@@ -179,47 +178,67 @@ export default function ConvocatoriaClient({
 
   function toggleTitular(id: string) {
     if (equiposBloqueados) return;
-    setPicks((prev) => {
-      const m = new Map(prev);
-      if (m.get(id) === "titular") {
-        m.delete(id);
-      } else {
-        const totalActual = Array.from(m.keys()).reduce(
-          (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
-          0
-        );
-        if (!m.has(id) && presupuesto !== null && totalActual > presupuesto) {
-          return prev;
-        }
-        let count = 0;
-        for (const [, s] of m) if (s === "titular") count++;
-        if (count >= titularesEsperados) return prev;
-        m.set(id, "titular");
-      }
-      return m;
-    });
+    const siguiente = new Map(picks);
+    if (siguiente.get(id) === "titular") {
+      siguiente.delete(id);
+    } else {
+      let count = 0;
+      for (const [, slot] of siguiente) if (slot === "titular") count++;
+      if (count >= titularesEsperados) return;
+      siguiente.set(id, "titular");
+    }
+
+    const nuevoTotal = Array.from(siguiente.keys()).reduce(
+      (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
+      0
+    );
+    if (
+      presupuesto !== null &&
+      nuevoTotal > presupuesto &&
+      nuevoTotal > total
+    ) {
+      const jugador = jugables.find((c) => c.member_id === id);
+      setToast(
+        `No podés seleccionar a ${jugador?.alias ?? "este jugador"}: no te alcanza el presupuesto (${nuevoTotal}/${presupuesto})`
+      );
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setPicks(siguiente);
   }
 
   function toggleSuplente(id: string) {
     if (equiposBloqueados) return;
     if (titularesSet.has(id)) return;
-    setPicks((prev) => {
-      const m = new Map(prev);
-      if (m.get(id) === "suplente") {
-        m.delete(id);
-      } else {
-        const totalActual = Array.from(m.keys()).reduce(
-          (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
-          0
-        );
-        if (!m.has(id) && presupuesto !== null && totalActual > presupuesto) {
-          return prev;
-        }
-        for (const [k, v] of m) if (v === "suplente") m.delete(k);
-        m.set(id, "suplente");
+    const siguiente = new Map(picks);
+    if (siguiente.get(id) === "suplente") {
+      siguiente.delete(id);
+    } else {
+      for (const [memberId, slot] of siguiente) {
+        if (slot === "suplente") siguiente.delete(memberId);
       }
-      return m;
-    });
+      siguiente.set(id, "suplente");
+    }
+
+    const nuevoTotal = Array.from(siguiente.keys()).reduce(
+      (sum, memberId) => sum + (valoresPorId.get(memberId) ?? 0),
+      0
+    );
+    if (
+      presupuesto !== null &&
+      nuevoTotal > presupuesto &&
+      nuevoTotal > total
+    ) {
+      const jugador = jugables.find((c) => c.member_id === id);
+      setToast(
+        `No podés seleccionar a ${jugador?.alias ?? "este jugador"}: no te alcanza el presupuesto (${nuevoTotal}/${presupuesto})`
+      );
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setPicks(siguiente);
   }
 
   function ejecutarAnotacion(fn: () => Promise<ActionResult>) {
@@ -706,7 +725,6 @@ export default function ConvocatoriaClient({
             onToggleTitular={() => toggleTitular(c.member_id)}
             onToggleSuplente={() => toggleSuplente(c.member_id)}
             bloqueado={equiposBloqueados}
-            bloquearNuevasSelecciones={sePasoDelPresupuesto}
           />
         ))}
         {jugables.length === 0 && (
@@ -1035,7 +1053,6 @@ function FilaConvocado({
   onToggleTitular,
   onToggleSuplente,
   bloqueado,
-  bloquearNuevasSelecciones,
 }: {
   c: Fila;
   esTitular: boolean;
@@ -1043,7 +1060,6 @@ function FilaConvocado({
   onToggleTitular: () => void;
   onToggleSuplente: () => void;
   bloqueado: boolean;
-  bloquearNuevasSelecciones: boolean;
 }) {
   return (
     <div
@@ -1080,20 +1096,13 @@ function FilaConvocado({
       <button
         type="button"
         onClick={onToggleTitular}
-        disabled={
-          bloqueado ||
-          (bloquearNuevasSelecciones && !esTitular && !esSuplente)
-        }
+        disabled={bloqueado}
         className="h-7 w-7 flex-none rounded-lg border text-xs font-bold transition"
         style={{
           background: esTitular ? "var(--or)" : "transparent",
           borderColor: esTitular ? "var(--or)" : "rgba(255,255,255,0.2)",
           color: esTitular ? "#fff" : "var(--dim)",
-          opacity:
-            bloqueado ||
-            (bloquearNuevasSelecciones && !esTitular && !esSuplente)
-              ? 0.5
-              : 1,
+          opacity: bloqueado ? 0.5 : 1,
         }}
       >
         T
@@ -1101,22 +1110,13 @@ function FilaConvocado({
       <button
         type="button"
         onClick={onToggleSuplente}
-        disabled={
-          bloqueado ||
-          esTitular ||
-          (bloquearNuevasSelecciones && !esTitular && !esSuplente)
-        }
+        disabled={bloqueado || esTitular}
         className="h-7 w-7 flex-none rounded-lg border text-xs font-bold transition"
         style={{
           background: esSuplente ? "var(--gold)" : "transparent",
           borderColor: esSuplente ? "var(--gold)" : "rgba(255,255,255,0.2)",
           color: esSuplente ? "#12261c" : "var(--dim)",
-          opacity:
-            bloqueado ||
-            esTitular ||
-            (bloquearNuevasSelecciones && !esTitular && !esSuplente)
-              ? 0.3
-              : 1,
+          opacity: bloqueado || esTitular ? 0.3 : 1,
         }}
       >
         S

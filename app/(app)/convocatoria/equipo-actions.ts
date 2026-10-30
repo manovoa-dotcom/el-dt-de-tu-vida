@@ -137,17 +137,18 @@ export async function guardarEquipo(
       0
     );
 
-    if (
-      totalActual > match.budget &&
-      picksFinales.some((p) => !idsActuales.has(p.member_id))
-    ) {
+    if (total > match.budget && total > totalActual) {
       return {
         ok: false,
-        error: `No podés agregar jugadores: ya te pasaste del presupuesto (${totalActual}/${match.budget})`,
+        error: `No podés seleccionar jugadores: no te alcanza el presupuesto (${total}/${match.budget})`,
       };
     }
 
-    if (equipoTieneTitularesYSuplente && total > match.budget) {
+    if (
+      equipoTieneTitularesYSuplente &&
+      total > match.budget &&
+      total >= totalActual
+    ) {
       return { ok: false, error: `Te pasaste del presupuesto (${total}/${match.budget})` };
     }
   }
