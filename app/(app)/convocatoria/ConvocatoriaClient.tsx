@@ -128,9 +128,11 @@ export default function ConvocatoriaClient({
     return sum;
   }, [picks, jugables]);
 
+  const equipoArmado =
+    titulares.length === titularesEsperados && suplente !== null;
   const equipoCompleto =
-    titulares.length === titularesEsperados &&
-    (presupuesto === null || total <= presupuesto);
+    equipoArmado && (presupuesto === null || total <= presupuesto);
+  const titularesFaltantes = Math.max(0, titularesEsperados - titulares.length);
 
   const hayCambios = useMemo(() => {
     if (picks.size !== picksGuardados.size) return true;
@@ -141,11 +143,9 @@ export default function ConvocatoriaClient({
   }, [picks, picksGuardados]);
 
   // ── AUTOGUARDADO ──
-  // Cuando hay cambios, el equipo está completo, y no estamos bloqueados,
-  // esperamos 800ms y guardamos solo.
+  // Guardamos cada borrador con cambios, aunque todavía esté incompleto.
   useEffect(() => {
     if (equiposBloqueados) return;
-    if (!equipoCompleto) return;
     if (!hayCambios) return;
     if (estadoGuardado === "guardando") return;
 
@@ -172,8 +172,7 @@ export default function ConvocatoriaClient({
     }, 800);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks, equipoCompleto, equiposBloqueados, matchId]);
+  }, [picks, hayCambios, estadoGuardado, equiposBloqueados, matchId]);
 
   function toggleTitular(id: string) {
     if (equiposBloqueados) return;
@@ -360,14 +359,20 @@ export default function ConvocatoriaClient({
   let textoEstado = "";
   if (equiposBloqueados) textoEstado = "🔒 Equipos cerrados";
   else if (estadoGuardado === "guardando") textoEstado = "Guardando...";
-  else if (estadoGuardado === "guardado") textoEstado = "✓ Guardado";
+  else if (estadoGuardado === "guardado")
+    textoEstado = equipoCompleto ? "✓ Equipo completo y guardado" : "✓ Borrador guardado";
   else if (estadoGuardado === "error") textoEstado = `⚠ ${errorGuardado}`;
-  else if (!equipoCompleto) {
-    const faltanTit = titularesEsperados - titulares.length;
-    if (faltanTit > 0)
-      textoEstado = `Faltan ${faltanTit} titular${faltanTit !== 1 ? "es" : ""}`;
-    else if (presupuesto !== null && total > presupuesto)
-      textoEstado = "Te pasaste del presupuesto";
+  else if (presupuesto !== null && total > presupuesto) {
+    textoEstado = "Te pasaste del presupuesto";
+  } else if (!equipoCompleto) {
+    const pendientes = [];
+    if (titularesFaltantes > 0) {
+      pendientes.push(
+        `${titularesFaltantes} titular${titularesFaltantes !== 1 ? "es" : ""}`
+      );
+    }
+    if (!suplente) pendientes.push("1 suplente");
+    textoEstado = `Borrador · falta${pendientes.length === 1 ? "" : "n"} ${pendientes.join(" y ")}`;
   }
 
   return (
@@ -534,31 +539,27 @@ export default function ConvocatoriaClient({
         )}
       </div>
 
-      {/* Aviso: faltan titulares */}
-      {!equipoCompleto && titulares.length < titularesEsperados && !equiposBloqueados && (
+      {/* Aviso: el borrador se guarda aunque el equipo esté incompleto */}
+      {!equipoArmado && !equiposBloqueados && (
         <div
           className="mx-3 mt-3 rounded-2xl p-4"
           style={{
             background: "rgba(242,182,50,0.15)",
-            border: "2px solid var(--gold)",
-            animation: "highlightPulse 2.5s ease-in-out infinite",
+            border: "1px solid rgba(242,182,50,0.5)",
           }}
         >
           <div className="flex items-center gap-3">
-            <span className="text-3xl">👥</span>
+            <span className="text-2xl">💾</span>
             <div className="min-w-0 flex-1">
               <div
-                className="bebas text-lg tracking-wider"
+                className="bebas text-base tracking-wider"
                 style={{ color: "var(--gold)" }}
               >
-                FALTAN TITULARES
+                BORRADOR DEL EQUIPO
               </div>
-              <p className="mt-1 text-xs font-bold" style={{ color: "var(--tx)" }}>
-                Elegiste <b>{titulares.length}</b> de <b>{titularesEsperados}</b>{" "}
-                titulares.
-                {titularesEsperados - titulares.length === 1
-                  ? " Te falta 1 más para guardar."
-                  : ` Te faltan ${titularesEsperados - titulares.length} más para guardar.`}
+              <p className="mt-1 text-xs" style={{ color: "var(--tx)" }}>
+                Tus selecciones se guardan automáticamente. Para completar el
+                equipo necesitás {titularesEsperados} titulares y 1 suplente.
               </p>
             </div>
           </div>

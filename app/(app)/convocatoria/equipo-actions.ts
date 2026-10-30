@@ -45,44 +45,61 @@ export async function guardarEquipo(
     return { ok: false, error: "El armado de equipos ya cerró" };
   }
 
-  // Validar titulares y suplentes
-const titulares = picks.filter((p) => p.slot === "titular");
-const suplentes = picks.filter((p) => p.slot === "suplente");
-const titularesEsperados = Math.floor(match.cupo / 2);
+  if (!Array.isArray(picks)) {
+    return { ok: false, error: "La selección de jugadores no es válida" };
+  }
 
-// Primero: traer la lista de convocados válidos
-const memberIdsAll = picks.map((p) => p.member_id);
-const { data: asistencias } = await supabase
-  .from("attendance")
-  .select("member_id")
-  .eq("match_id", matchId)
-  .in("status", ["anotado", "presente", "lista_espera"])
-  .in("member_id", memberIdsAll);
+  const titularesEsperados = Math.floor(match.cupo / 2);
+  if (
+    picks.some(
+      (p) =>
+        !p ||
+        typeof p.member_id !== "string" ||
+        !p.member_id ||
+        (p.slot !== "titular" && p.slot !== "suplente")
+    )
+  ) {
+    return { ok: false, error: "La selección de jugadores no es válida" };
+  }
+  if (new Set(picks.map((p) => p.member_id)).size !== picks.length) {
+    return { ok: false, error: "Un jugador no puede ocupar dos lugares del equipo" };
+  }
 
-const anotadosSet = new Set((asistencias ?? []).map((a) => a.member_id));
+  const titulares = picks.filter((p) => p.slot === "titular");
+  const suplentes = picks.filter((p) => p.slot === "suplente");
+  if (titulares.length > titularesEsperados) {
+    return { ok: false, error: `No podés elegir más de ${titularesEsperados} titulares` };
+  }
+  if (suplentes.length > 1) {
+    return { ok: false, error: "Solo podés elegir 1 suplente" };
+  }
 
-// Filtrar picks huérfanos (los que no están convocados)
-const picksValidos = picks.filter((p) => anotadosSet.has(p.member_id));
+  const picksFinales = picks;
+  const memberIds = picksFinales.map((p) => p.member_id);
 
-const titularesValidos = picksValidos.filter((p) => p.slot === "titular");
-const suplentesValidos = picksValidos.filter((p) => p.slot === "suplente");
+  if (memberIds.length > 0) {
+    const { data: asistencias, error: errorAsistencias } = await supabase
+      .from("attendance")
+      .select("member_id")
+      .eq("match_id", matchId)
+      .in("status", ["anotado", "presente", "lista_espera"])
+      .in("member_id", memberIds);
 
-if (titularesValidos.length !== titularesEsperados) {
-  return {
-    ok: false,
-    error: `Necesitás ${titularesEsperados} titulares (tenés ${titularesValidos.length})`,
-  };
-}
-if (suplentesValidos.length > 1) {
-  return { ok: false, error: "Solo 1 suplente" };
-}
+    if (errorAsistencias) {
+      console.error(errorAsistencias);
+      return { ok: false, error: "No se pudo validar la convocatoria" };
+    }
 
-// Usamos los válidos de acá en adelante
-const picksFinales = picksValidos;
-const memberIds = picksFinales.map((p) => p.member_id);
+    const convocadosSet = new Set((asistencias ?? []).map((a) => a.member_id));
+    if (memberIds.some((id) => !convocadosSet.has(id))) {
+      return { ok: false, error: "Solo podés elegir jugadores convocados" };
+    }
+  }
 
   // Validar el presupuesto con los valores calculados para esta fecha.
-  if (match.budget !== null) {
+  const equipoTieneTitularesYSuplente =
+    titulares.length === titularesEsperados && suplentes.length === 1;
+  if (match.budget !== null && equipoTieneTitularesYSuplente) {
     const { data: valores } = await supabase
       .from("market_values")
       .select("member_id, value")
@@ -111,11 +128,19 @@ const memberIds = picksFinales.map((p) => p.member_id);
   if (teamExistente) {
     teamId = teamExistente.id;
     await supabase.from("fantasy_picks").delete().eq("team_id", teamId);
+    if (picksFinales.length === 0) {
+      await supabase.from("fantasy_teams").delete().eq("id", teamId);
+      revalidatePath("/convocatoria");
+      return { ok: true, message: "Borrador del equipo limpiado" };
+    }
     await supabase
       .from("fantasy_teams")
       .update({ submitted_at: new Date().toISOString() })
       .eq("id", teamId);
   } else {
+    if (picksFinales.length === 0) {
+      return { ok: true, message: "Borrador del equipo limpio" };
+    }
     const { data: teamNuevo, error: errTeam } = await supabase
       .from("fantasy_teams")
       .insert({
