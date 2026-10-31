@@ -61,8 +61,20 @@ export async function guardarConfigGrupo(
   );
 
   if (error) {
-    console.error(error);
-    return { ok: false, error: "Error al guardar" };
+    console.error("Error al guardar la configuración del grupo:", error);
+
+    if (error.code === "PGRST202") {
+      return {
+        ok: false,
+        error:
+          "Supabase no encuentra la función de guardado. Aplicá la migración 20261030000000_save_group_championship_config.sql y volvé a intentar.",
+      };
+    }
+
+    return {
+      ok: false,
+      error: `No se pudo guardar: ${error.message}`,
+    };
   }
 
   if (grupoActualizado !== true) {
