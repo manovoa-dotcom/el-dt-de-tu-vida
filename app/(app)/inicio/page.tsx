@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import BotonAyuda from "@/components/BotonAyuda";
 import BotonNotificaciones from "@/components/BotonNotificaciones";
+import NotificacionesPrompt from "@/components/NotificacionesPrompt";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import BotonAnotarse from "./BotonAnotarse";
@@ -32,6 +33,8 @@ export default async function InicioPage() {
     name: string;
     slug: string;
   };
+  const kickoffThreshold = new Date();
+  kickoffThreshold.setTime(kickoffThreshold.getTime() - 24 * 60 * 60 * 1000);
 
   const { data: miPerfil } = await supabase
     .from("profiles")
@@ -44,7 +47,7 @@ export default async function InicioPage() {
     .select("id, number, kickoff_at, place, cupo, status, baja_closes_at")
     .eq("group_id", grupo.id)
     .eq("status", "programada")
-    .gte("kickoff_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .gte("kickoff_at", kickoffThreshold.toISOString())
     .order("kickoff_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -159,6 +162,7 @@ export default async function InicioPage() {
 
   return (
     <div>
+      <NotificacionesPrompt memberId={membership.id} />
       <header className="px-4 pb-2 pt-6">
         <div className="flex items-start justify-between gap-3">
           <Link

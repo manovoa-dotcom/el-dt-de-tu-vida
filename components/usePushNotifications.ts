@@ -16,40 +16,66 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function usePushNotifications() {
-  const [isSupported, setIsSupported] = useState(false);
+  const isSupported =
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window;
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
+    "default"
+  );
 
-    useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window
-    ) {
-      setIsSupported(true);
+  useEffect(() => {
+    if (!isSupported) {
+        const timeout = setTimeout(() => {
+          setPermission("unsupported");
+          setLoading(false);
+        }, 0);
+        return () => clearTimeout(timeout);
+    }
 
-      // Timeout de seguridad: si el SW no responde en 3 segundos, seguimos igual
-      const timeout = setTimeout(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+        if (cancelled) return;
+        setPermission(Notification.permission);
         setLoading(false);
-      }, 3000);
+    }, 3000);
 
-      navigator.serviceWorker.ready
-        .then((reg) => reg.pushManager.getSubscription())
+    navigator.serviceWorker
+        .ready.then((reg) => reg.pushManager.getSubscription())
         .then((sub) => {
+          if (cancelled) return;
           setSubscription(sub);
+          setPermission(Notification.permission);
           clearTimeout(timeout);
           setLoading(false);
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error("Error verificando suscripción:", err);
+          setPermission(Notification.permission);
           clearTimeout(timeout);
           setLoading(false);
         });
-    } else {
-      setLoading(false);
-    }
-  }, []);
+
+    const actualizarSuscripcion = () => {
+        if (!("serviceWorker" in navigator)) return;
+        navigator.serviceWorker.ready
+          .then((reg) => reg.pushManager.getSubscription())
+          .then((sub) => {
+            if (!cancelled) setSubscription(sub);
+          })
+          .catch((err) => console.error("Error verificando suscripción:", err));
+    };
+    window.addEventListener("push-subscription-changed", actualizarSuscripcion);
+    return () => {
+        cancelled = true;
+        clearTimeout(timeout);
+        window.removeEventListener("push-subscription-changed", actualizarSuscripcion);
+    };
+  }, [isSupported]);
 
   const subscribe = useCallback(async () => {
     setError(null);
@@ -60,6 +86,7 @@ export function usePushNotifications() {
 
     try {
       const permission = await Notification.requestPermission();
+      setPermission(permission);
       if (permission !== "granted") {
         setError("No diste permiso para las notificaciones");
         return;
@@ -85,11 +112,12 @@ export function usePushNotifications() {
       }
 
       setSubscription(sub);
+      window.dispatchEvent(new Event("push-subscription-changed"));
     } catch (err) {
       console.error(err);
       setError("Error al activar las notificaciones");
     }
   }, [isSupported]);
 
-  return { isSupported, subscription, loading, error, subscribe };
+  return { isSupported, subscription, loading, error, permission, subscribe };
 }

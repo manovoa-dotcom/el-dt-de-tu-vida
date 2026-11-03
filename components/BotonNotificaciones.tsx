@@ -3,7 +3,7 @@
 import { usePushNotifications } from "./usePushNotifications";
 
 export default function BotonNotificaciones() {
-  const { isSupported, subscription, loading, error, subscribe } =
+  const { isSupported, subscription, loading, error, permission, subscribe } =
     usePushNotifications();
 
    // Mientras carga, mostramos un texto de diagnóstico
@@ -32,6 +32,14 @@ export default function BotonNotificaciones() {
         style={{ color: "var(--gold)" }}
       >
         🔔 Activadas
+      </span>
+    );
+  }
+
+  if (permission === "denied") {
+    return (
+      <span className="text-xs" style={{ color: "var(--dim)" }}>
+        🔔 Activá el permiso desde tu navegador
       </span>
     );
   }
