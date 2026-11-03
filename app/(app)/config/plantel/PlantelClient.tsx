@@ -10,7 +10,7 @@ import {
   suspenderMiembro,
   rehabilitarMiembro,
   darDeBaja,
-  eliminarDefinitivo,
+  vincularMiembroArchivado,
   agregarInvitado,
   type ActionResult,
 } from "./actions";
@@ -19,7 +19,9 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
-  const [confirmarEliminar, setConfirmarEliminar] = useState<Miembro | null>(null);
+  const [cuentasSeleccionadas, setCuentasSeleccionadas] = useState<
+    Record<string, string>
+  >({});
 
   function ejecutar(
     fn: () => Promise<ActionResult>,
@@ -43,6 +45,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
   const suspendidos = miembros.filter((m) => m.status === "suspendido");
   const invitados = miembros.filter((m) => m.status === "invitado");
   const bajas = miembros.filter((m) => m.status === "baja");
+  const pendientesVinculables = pendientes.filter((m) => m.user_id !== null);
 
   return (
     <div className="mt-2">
@@ -129,7 +132,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
                 }
                 disabled={isPending}
                 color="var(--red)"
-                texto="Eliminar"
+                texto="Archivar"
               />
             </FilaMiembro>
           ))}
@@ -164,104 +167,79 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
 
       {/* BAJAS */}
       {bajas.length > 0 && (
-        <Seccion titulo={`📁 Bajas (${bajas.length})`} abierta={false}>
-          {bajas.map((m) => (
-            <FilaMiembro key={m.id} m={m}>
-              <BotonMini
-                onClick={() =>
-                  ejecutar(() => rehabilitarMiembro(m.id), () => router.refresh())
-                }
-                disabled={isPending}
-                color="var(--gold)"
-                texto="Reactivar"
-              />
-              <BotonMini
-                onClick={() => setConfirmarEliminar(m)}
-                disabled={isPending}
-                color="var(--red)"
-                texto="🗑️ Eliminar"
-              />
-            </FilaMiembro>
-          ))}
+        <Seccion titulo={`📁 Archivados (${bajas.length})`} abierta={false}>
+          <p className="px-4 pb-2 text-xs" style={{ color: "var(--dim)" }}>
+            Se conservan sus equipos, puntos y demás historial. Si vuelve con
+            otra cuenta, vinculá acá su solicitud pendiente.
+          </p>
+          {bajas.map((m) => {
+            const cuentaSeleccionada = cuentasSeleccionadas[m.id] ?? "";
+            return (
+              <div key={m.id}>
+                <FilaMiembro m={m}>
+                  <BotonMini
+                    onClick={() =>
+                      ejecutar(() => rehabilitarMiembro(m.id), () => router.refresh())
+                    }
+                    disabled={isPending}
+                    color="var(--gold)"
+                    texto="Reactivar"
+                  />
+                </FilaMiembro>
+                {pendientesVinculables.length > 0 && (
+                  <div className="flex gap-2 px-4 pb-3">
+                    <select
+                      value={cuentaSeleccionada}
+                      onChange={(event) =>
+                        setCuentasSeleccionadas((prev) => ({
+                          ...prev,
+                          [m.id]: event.target.value,
+                        }))
+                      }
+                      disabled={isPending}
+                      aria-label={`Cuenta pendiente para vincular con ${m.display_name}`}
+                      className="min-w-0 flex-1 rounded-lg px-2 py-2 text-xs"
+                      style={{
+                        background: "var(--g2)",
+                        color: "var(--tx)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                      }}
+                    >
+                      <option value="">Elegí una solicitud pendiente</option>
+                      {pendientesVinculables.map((pendiente) => (
+                        <option key={pendiente.id} value={pendiente.id}>
+                          {pendiente.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={isPending || !cuentaSeleccionada}
+                      onClick={() =>
+                        ejecutar(
+                          () =>
+                            vincularMiembroArchivado(m.id, cuentaSeleccionada),
+                          () => {
+                            setCuentasSeleccionadas((prev) => {
+                              const next = { ...prev };
+                              delete next[m.id];
+                              return next;
+                            });
+                            router.refresh();
+                          }
+                        )
+                      }
+                      className="rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-40"
+                      style={{ background: "var(--or)", color: "#fff" }}
+                    >
+                      Vincular
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </Seccion>
-      )}
-
-      {/* Modal de confirmación para eliminar */}
-      {confirmarEliminar && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
-          style={{ background: "rgba(0,0,0,0.75)" }}
-          onClick={() => !isPending && setConfirmarEliminar(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-6"
-            style={{
-              background: "var(--g1)",
-              border: "2px solid var(--red)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center">
-              <div className="text-4xl">🗑️</div>
-              <h2
-                className="bebas mt-2 text-2xl"
-                style={{ color: "var(--red)" }}
-              >
-                ¿Eliminar definitivamente?
-              </h2>
-            </div>
-
-            <div
-              className="mt-4 rounded-xl p-3 text-xs"
-              style={{
-                background: "rgba(226,59,77,0.15)",
-                color: "var(--tx)",
-              }}
-            >
-              Vas a borrar a <b>{confirmarEliminar.display_name}</b> del grupo.
-              <br />
-              <br />
-              ⚠️ Esto borra <b>todo su historial</b>: partidos jugados, puntos,
-              tarjetas, equipos armados, valores de mercado.{" "}
-              <b>No se puede deshacer.</b>
-              <br />
-              <br />
-              Si solo querés ocultarlo sin perder su historia, usá "Suspender"
-              en lugar de esto.
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmarEliminar(null)}
-                disabled={isPending}
-                className="flex-1 rounded-xl border py-3 text-sm font-bold transition disabled:opacity-50"
-                style={{
-                  borderColor: "rgba(255,255,255,0.2)",
-                  color: "var(--dim)",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const m = confirmarEliminar;
-                  setConfirmarEliminar(null);
-                  ejecutar(
-                    () => eliminarDefinitivo(m.id),
-                    () => router.refresh()
-                  );
-                }}
-                disabled={isPending}
-                className="flex-1 rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
-                style={{ background: "var(--red)", color: "#fff" }}
-              >
-                {isPending ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

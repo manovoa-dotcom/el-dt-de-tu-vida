@@ -134,7 +134,7 @@ export async function rehabilitarMiembro(memberId: string): Promise<ActionResult
 
   const { error: err } = await supabase
     .from("group_members")
-    .update({ status: "activo" })
+    .update({ status: "activo", left_at: null })
     .eq("id", memberId)
     .eq("group_id", groupId);
 
@@ -242,59 +242,30 @@ export async function agregarInvitado(
   revalidatePath("/config/plantel");
   return { ok: true, message: `Invitado "${alias}" agregado` };
 }
-// ────────────────────────────────────────────────────────────────
-// Eliminar definitivamente del grupo (borra TODO el historial en cascada)
-// ────────────────────────────────────────────────────────────────
-export async function eliminarDefinitivo(
-  memberId: string
+
+export async function vincularMiembroArchivado(
+  archivedMemberId: string,
+  pendingMemberId: string
 ): Promise<ActionResult> {
-  const { supabase, groupId, error } = await requireAdmin();
+  const { supabase, error } = await requireAdmin();
   if (error) return { ok: false, error };
 
-  // Verificar que el miembro pertenece al grupo
-  const { data: miembro } = await supabase
-    .from("group_members")
-    .select("id, display_name, status")
-    .eq("id", memberId)
-    .eq("group_id", groupId)
-    .maybeSingle();
-
-  if (!miembro) return { ok: false, error: "Miembro no encontrado" };
-
-  if (miembro.status !== "baja") {
-    return {
-      ok: false,
-      error: "Solo se pueden eliminar definitivamente a miembros dados de baja primero. Usá Suspender.",
-    };
-  }
-
-  // Registrar en el historial de correcciones ANTES de borrar
-  await supabase.from("corrections").insert({
-    group_id: groupId,
-    entity: "otro",
-    entity_id: memberId,
-    description: `🗑️ Se eliminó definitivamente del grupo a ${miembro.display_name}. Todo su historial fue borrado.`,
-    before_data: { display_name: miembro.display_name, status: miembro.status },
+  const { error: linkError } = await supabase.rpc("vincular_miembro_archivado", {
+    p_archived_member_id: archivedMemberId,
+    p_pending_member_id: pendingMemberId,
   });
 
-  // Borrar (cascade elimina todo lo relacionado)
-  const { error: err } = await supabase
-    .from("group_members")
-    .delete()
-    .eq("id", memberId)
-    .eq("group_id", groupId);
-
-  if (err) {
-    console.error(err);
-    return { ok: false, error: "Error al eliminar" };
+  if (linkError) {
+    console.error(linkError);
+    return {
+      ok: false,
+      error: linkError.message || "No se pudo vincular la cuenta con el historial",
+    };
   }
 
   revalidatePath("/config/plantel");
   revalidatePath("/inicio");
   revalidatePath("/ranking");
   revalidatePath("/convocatoria");
-  return {
-    ok: true,
-    message: `${miembro.display_name} eliminado del grupo`,
-  };
+  return { ok: true, message: "Cuenta vinculada; se conservó el historial del jugador" };
 }
