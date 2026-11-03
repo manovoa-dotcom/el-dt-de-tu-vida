@@ -10,7 +10,7 @@ import {
   suspenderMiembro,
   rehabilitarMiembro,
   darDeBaja,
-  vincularMiembroArchivado,
+  vincularSolicitudConHistorial,
   agregarInvitado,
   type ActionResult,
 } from "./actions";
@@ -20,6 +20,9 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
   const [cuentasSeleccionadas, setCuentasSeleccionadas] = useState<
+    Record<string, string>
+  >({});
+  const [historialPorSolicitud, setHistorialPorSolicitud] = useState<
     Record<string, string>
   >({});
 
@@ -46,6 +49,9 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
   const invitados = miembros.filter((m) => m.status === "invitado");
   const bajas = miembros.filter((m) => m.status === "baja");
   const pendientesVinculables = pendientes.filter((m) => m.user_id !== null);
+  const historialesVinculables = miembros.filter(
+    (m) => m.status === "baja" || (m.status === "invitado" && m.user_id === null)
+  );
 
   return (
     <div className="mt-2">
@@ -66,26 +72,88 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
       {/* PENDIENTES */}
       {pendientes.length > 0 && (
         <Seccion titulo={`⏳ Pendientes (${pendientes.length})`} abierta={true}>
-          {pendientes.map((m) => (
-            <FilaMiembro key={m.id} m={m}>
-              <BotonMini
-                onClick={() =>
-                  ejecutar(() => aprobarMiembro(m.id), () => router.refresh())
-                }
-                disabled={isPending}
-                color="var(--gold)"
-                texto="Aprobar"
-              />
-              <BotonMini
-                onClick={() =>
-                  ejecutar(() => rechazarPendiente(m.id), () => router.refresh())
-                }
-                disabled={isPending}
-                color="var(--red)"
-                texto="Rechazar"
-              />
-            </FilaMiembro>
-          ))}
+          <p className="px-4 pb-2 text-xs" style={{ color: "var(--dim)" }}>
+            Si la persona ya jugaba como invitada, confirmá su identidad por un
+            canal conocido y vinculá su historial al aprobarla.
+          </p>
+          {pendientes.map((m) => {
+            const historialId = historialPorSolicitud[m.id] ?? "";
+            return (
+              <div key={m.id}>
+                <FilaMiembro m={m}>
+                  <BotonMini
+                    onClick={() =>
+                      ejecutar(() => aprobarMiembro(m.id), () => router.refresh())
+                    }
+                    disabled={isPending || !!historialId}
+                    color="var(--gold)"
+                    texto={historialId ? "Vinculá el historial elegido" : "Aprobar"}
+                  />
+                  <BotonMini
+                    onClick={() =>
+                      ejecutar(() => rechazarPendiente(m.id), () => router.refresh())
+                    }
+                    disabled={isPending}
+                    color="var(--red)"
+                    texto="Rechazar"
+                  />
+                </FilaMiembro>
+                {historialesVinculables.length > 0 && (
+                  <div className="px-4 pb-3">
+                    <div className="flex gap-2">
+                      <select
+                        value={historialId}
+                        onChange={(event) =>
+                          setHistorialPorSolicitud((prev) => ({
+                            ...prev,
+                            [m.id]: event.target.value,
+                          }))
+                        }
+                        disabled={isPending}
+                        aria-label={`Historial anterior de ${m.display_name}`}
+                        className="min-w-0 flex-1 rounded-lg px-2 py-2 text-xs"
+                        style={{
+                          background: "var(--g2)",
+                          color: "var(--tx)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                        }}
+                      >
+                        <option value="">Es nuevo en el grupo</option>
+                        {historialesVinculables.map((anterior) => (
+                          <option key={anterior.id} value={anterior.id}>
+                            {anterior.display_name} ·{" "}
+                            {anterior.status === "invitado" ? "invitado" : "archivado"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={isPending || !historialId}
+                        onClick={() =>
+                          ejecutar(
+                            () =>
+                              vincularSolicitudConHistorial(historialId, m.id),
+                            () => {
+                              setHistorialPorSolicitud((prev) => {
+                                const next = { ...prev };
+                                delete next[m.id];
+                                return next;
+                              });
+                              router.refresh();
+                            }
+                          )
+                        }
+                        className="rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-40"
+                        style={{ background: "var(--or)", color: "#fff" }}
+                      >
+                        Aprobar y vincular
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </Seccion>
       )}
 
@@ -218,7 +286,7 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
                       onClick={() =>
                         ejecutar(
                           () =>
-                            vincularMiembroArchivado(m.id, cuentaSeleccionada),
+                            vincularSolicitudConHistorial(m.id, cuentaSeleccionada),
                           () => {
                             setCuentasSeleccionadas((prev) => {
                               const next = { ...prev };

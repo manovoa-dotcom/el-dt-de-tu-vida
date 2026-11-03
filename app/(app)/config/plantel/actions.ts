@@ -243,15 +243,16 @@ export async function agregarInvitado(
   return { ok: true, message: `Invitado "${alias}" agregado` };
 }
 
-export async function vincularMiembroArchivado(
-  archivedMemberId: string,
+export async function vincularSolicitudConHistorial(
+  memberId: string,
   pendingMemberId: string
 ): Promise<ActionResult> {
-  const { supabase, error } = await requireAdmin();
+  const { supabase, groupId, error } = await requireAdmin();
   if (error) return { ok: false, error };
 
-  const { error: linkError } = await supabase.rpc("vincular_miembro_archivado", {
-    p_archived_member_id: archivedMemberId,
+  const { error: linkError } = await supabase.rpc("vincular_cuenta_con_historial", {
+    p_group_id: groupId,
+    p_member_id: memberId,
     p_pending_member_id: pendingMemberId,
   });
 
