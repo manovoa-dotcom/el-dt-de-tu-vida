@@ -183,7 +183,7 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
         <div className="space-y-3">
           <ValorInput
             label="Presentismo"
-            hint="Si jugó la fecha anterior"
+            hint="Valor mínimo para todos los jugadores elegibles"
             value={form.presentismo_value}
             onChange={(v) => setForm({ ...form, presentismo_value: v })}
           />

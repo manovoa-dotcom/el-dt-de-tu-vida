@@ -67,6 +67,26 @@ export default async function ConvocatoriaPage() {
     );
   }
 
+  const { data: grupo, error: errorGrupo } = await supabase
+    .from("groups")
+    .select("presentismo_value")
+    .eq("id", membership.group_id)
+    .maybeSingle();
+
+  if (errorGrupo || !grupo) {
+    console.error("Error cargando el valor mínimo del grupo:", errorGrupo);
+    return (
+      <div className="p-6">
+        <h1 className="bebas text-3xl">Convocatoria</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
+          No se pudo cargar el valor mínimo de los jugadores. Probá de nuevo.
+        </p>
+      </div>
+    );
+  }
+
+  const valorMinimo = grupo.presentismo_value;
+
   // Todos los miembros del grupo (activos + invitados)
   const { data: miembrosRaw } = await supabase
     .from("group_members")
@@ -179,7 +199,7 @@ export default async function ConvocatoriaPage() {
       alias: m.display_name,
       real_name: perfil?.real_name ?? null,
       photo_url: perfil?.photo_url ?? null,
-      valor: valoresMap.get(m.id) ?? 0,
+      valor: Math.max(valoresMap.get(m.id) ?? valorMinimo, valorMinimo),
       tieneCuenta: m.user_id !== null,
       is_me: m.id === membership.id,
       is_invitado: m.status === "invitado",
@@ -229,7 +249,6 @@ export default async function ConvocatoriaPage() {
   ).length;
 
   
-   const kickoff = new Date(partido.kickoff_at);
   const bajaCloses = new Date(partido.baja_closes_at);
 
   const ahora = new Date();

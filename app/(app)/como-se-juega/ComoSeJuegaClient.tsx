@@ -348,10 +348,10 @@ function ContenidoPuntajes() {
         evitar empates.
       </Parrafo>
       <Destacado>
-        <strong>Valor de mercado:</strong> cada jugador tiene un precio que sube
-        o baja según cuántos DTs lo eligen. Es el número que ves al lado de cada
-        nombre cuando armás tu equipo. Si un jugador falta, conserva su última
-        cotización; los demás mantienen el cálculo habitual de la fecha.
+        <strong>Valor de mercado:</strong> todos los jugadores elegibles parten
+        del mínimo configurado por el admin. El valor puede subir por las
+        bonificaciones del campeonato. Si un jugador falta, conserva su última
+        cotización, siempre respetando ese mínimo.
       </Destacado>
     </>
   );

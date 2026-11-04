@@ -38,6 +38,19 @@ export async function guardarEquipo(
     return { ok: false, error: "El partido no está abierto" };
   }
 
+  const { data: grupo, error: errorGrupo } = await supabase
+    .from("groups")
+    .select("presentismo_value")
+    .eq("id", match.group_id)
+    .maybeSingle();
+
+  if (errorGrupo || !grupo) {
+    console.error("Error cargando el valor mínimo del grupo:", errorGrupo);
+    return { ok: false, error: "No se pudo validar el valor mínimo de jugadores" };
+  }
+
+  const valorMinimo = grupo.presentismo_value;
+
   const ahora = new Date();
   const cierra = new Date(match.teams_lock_at);
 
@@ -131,9 +144,11 @@ export async function guardarEquipo(
       valoresMap = new Map((valores ?? []).map((v) => [v.member_id, v.value]));
     }
 
-    const total = picksFinales.reduce((s, p) => s + (valoresMap.get(p.member_id) ?? 0), 0);
+    const valorJugador = (memberId: string) =>
+      Math.max(valoresMap.get(memberId) ?? valorMinimo, valorMinimo);
+    const total = picksFinales.reduce((s, p) => s + valorJugador(p.member_id), 0);
     const totalActual = picksActuales.reduce(
-      (s, p) => s + (valoresMap.get(p.member_id) ?? 0),
+      (s, p) => s + valorJugador(p.member_id),
       0
     );
 

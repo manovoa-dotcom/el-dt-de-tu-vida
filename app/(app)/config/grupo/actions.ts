@@ -95,9 +95,21 @@ export async function guardarConfigGrupo(
     .maybeSingle();
 
   if (proximo) {
-    await supabase.rpc("calcular_valor_mercado", {
+    const { error: errorValores } = await supabase.rpc("calcular_valor_mercado", {
       p_match_id: proximo.id,
     });
+
+    if (errorValores) {
+      console.error("Error recalculando el valor de mercado:", errorValores);
+      revalidatePath("/config/grupo");
+      revalidatePath("/config");
+      revalidatePath("/inicio");
+      revalidatePath("/convocatoria");
+      return {
+        ok: false,
+        error: "La configuración se guardó, pero no se pudieron recalcular los valores. Usá «Recalcular valores» para reintentar.",
+      };
+    }
   }
 
   revalidatePath("/config/grupo");

@@ -37,6 +37,26 @@ export default async function PlantelPage() {
     );
   }
 
+  const { data: grupo, error: errorGrupo } = await supabase
+    .from("groups")
+    .select("presentismo_value")
+    .eq("id", membership.group_id)
+    .maybeSingle();
+
+  if (errorGrupo || !grupo) {
+    console.error("Error cargando el valor mínimo del grupo:", errorGrupo);
+    return (
+      <div className="p-6">
+        <h1 className="bebas text-3xl">Plantel</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
+          No se pudo cargar el valor mínimo de los jugadores. Probá de nuevo.
+        </p>
+      </div>
+    );
+  }
+
+  const valorMinimo = grupo.presentismo_value;
+
   // Cargar todos los miembros del grupo
   const { data: miembrosRaw } = await supabase
     .from("group_members")
@@ -76,7 +96,7 @@ export default async function PlantelPage() {
     .eq("status", "activa")
     .maybeSingle();
 
-  let valoresMercado: Record<string, number> = {};
+  const valoresMercado: Record<string, number> = {};
   if (season) {
     const { data: valores } = await supabase
       .from("market_values")
@@ -101,7 +121,7 @@ export default async function PlantelPage() {
     status: m.status,
     joined_at: m.joined_at,
     photo_url: m.user_id ? perfiles[m.user_id]?.photo_url ?? null : null,
-    market_value: valoresMercado[m.id] ?? null,
+    market_value: Math.max(valoresMercado[m.id] ?? valorMinimo, valorMinimo),
   }));
 
   return (
