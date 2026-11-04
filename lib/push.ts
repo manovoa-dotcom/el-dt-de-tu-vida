@@ -20,6 +20,11 @@ export async function enviarNotificacion(
   userIds: string[],
   payload: PushPayload
 ) {
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[PUSH] Notificaciones desactivadas fuera de producción");
+    return;
+  }
+
   console.log("[PUSH] Iniciando envío a", userIds.length, "usuarios");
   console.log("[PUSH] userIds:", userIds);
 
