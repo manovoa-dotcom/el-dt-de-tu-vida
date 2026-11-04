@@ -88,15 +88,14 @@ export default async function CargarResultadosPage({
   }
 
   const params = await searchParams;
-  const fechaQuery = params.fecha ? parseInt(params.fecha, 10) : null;
+  const fechaQuery = params.fecha ? Number(params.fecha) : null;
   const nowIso = new Date().toISOString();
 
   let match: (typeof partidos)[number] | null = null;
   let isEditing = false;
   let partidoNoJugado: (typeof partidos)[number] | null = null;
 
-  // Si viene ?fecha=N
-  if (fechaQuery) {
+  if (fechaQuery !== null && Number.isInteger(fechaQuery)) {
     const encontrado = partidos.find((p) => p.number === fechaQuery);
     if (encontrado) {
       if (encontrado.status === "jugada" || encontrado.status === "cerrada") {
@@ -113,22 +112,85 @@ export default async function CargarResultadosPage({
     }
   }
 
-  // Sin ?fecha=N, buscar automáticamente
-  if (!match && !partidoNoJugado) {
-    const pendiente = partidos.find(
-      (p) => p.status === "programada" && p.kickoff_at < nowIso
+  if (fechaQuery === null) {
+    return (
+      <div>
+        <header className="px-4 pb-2 pt-6">
+          <Link
+            href="/config"
+            className="text-xs no-underline"
+            style={{ color: "var(--dim)" }}
+          >
+            ← Config
+          </Link>
+          <h1 className="bebas mt-2 text-3xl">Cargar resultados</h1>
+          <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
+            Elegí la fecha para revisar o cargar sus resultados.
+          </p>
+        </header>
+        <div className="mt-3">
+          {partidos.map((partido) => {
+            const jugada =
+              partido.status === "jugada" || partido.status === "cerrada";
+            const programada = partido.status === "programada";
+            const seleccionable = jugada || programada;
+            const fecha = formatearFechaAR(partido.kickoff_at);
+            const estado = jugada
+              ? "Resultados cargados · editable"
+              : programada
+                ? partido.kickoff_at < nowIso
+                  ? "Partido pasado · resultados pendientes"
+                  : "Programada · todavía no se jugó"
+                : "Suspendida";
+            const contenido = (
+              <>
+                <div>
+                  <div className="bebas text-lg">Fecha {partido.number}</div>
+                  <div className="text-[11px]" style={{ color: "var(--dim)" }}>
+                    {fecha.dia}/{fecha.mes + 1} ·{" "}
+                    {formatearHoraAR(partido.kickoff_at)} hs
+                  </div>
+                  <div className="mt-1 text-[11px]" style={{ color: "var(--dim)" }}>
+                    {estado}
+                  </div>
+                </div>
+                {seleccionable && (
+                  <span className="text-xs" style={{ color: "var(--gold)" }}>
+                    Elegir →
+                  </span>
+                )}
+              </>
+            );
+
+            return seleccionable ? (
+              <Link
+                key={partido.id}
+                href={`/config/resultados?fecha=${partido.number}`}
+                className="mx-3 mt-2 flex items-center justify-between rounded-xl p-4 no-underline"
+                style={{
+                  background: "var(--g1)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "var(--tx)",
+                }}
+              >
+                {contenido}
+              </Link>
+            ) : (
+              <div
+                key={partido.id}
+                className="mx-3 mt-2 flex items-center justify-between rounded-xl p-4 opacity-60"
+                style={{
+                  background: "var(--g1)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                {contenido}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     );
-    if (pendiente) {
-      match = pendiente;
-    } else {
-      const jugadas = partidos
-        .filter((p) => p.status === "jugada" || p.status === "cerrada")
-        .sort((a, b) => b.number - a.number);
-      if (jugadas.length > 0) {
-        match = jugadas[0];
-        isEditing = true;
-      }
-    }
   }
 
   // Caso especial: el partido todavía no se jugó
@@ -188,12 +250,18 @@ export default async function CargarResultadosPage({
           className="mx-3 mt-3 rounded-2xl p-6 text-center"
           style={{ background: "var(--g1)", border: "1px dashed rgba(255,255,255,0.15)" }}
         >
-          <div className="text-4xl">📝</div>
-          <p className="bebas mt-3 text-xl">Sin partidos pendientes</p>
+          <div className="text-4xl">⚠️</div>
+          <p className="bebas mt-3 text-xl">No se puede cargar esa fecha</p>
           <p className="mt-1 text-xs" style={{ color: "var(--dim)" }}>
-            Cuando termine el próximo partido, va a aparecer acá para cargar los
-            resultados.
+            La fecha no existe o está suspendida. Volvé a la lista y elegí otra.
           </p>
+          <Link
+            href="/config/resultados"
+            className="mt-4 inline-block text-xs font-bold no-underline"
+            style={{ color: "var(--gold)" }}
+          >
+            ← Elegir otra fecha
+          </Link>
         </div>
       </div>
     );

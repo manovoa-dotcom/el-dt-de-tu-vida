@@ -113,6 +113,31 @@ export async function guardarPartido(
       return { ok: false, error: "No hay temporada activa" };
     }
 
+    const { data: partidoVencido, error: errorPartidoVencido } = await supabase
+      .from("matches")
+      .select("number")
+      .eq("season_id", season.id)
+      .eq("status", "programada")
+      .lt("kickoff_at", new Date().toISOString())
+      .order("number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (errorPartidoVencido) {
+      console.error(errorPartidoVencido);
+      return {
+        ok: false,
+        error: "No se pudo verificar si hay fechas pendientes. Probá de nuevo.",
+      };
+    }
+
+    if (partidoVencido) {
+      return {
+        ok: false,
+        error: `La Fecha ${partidoVencido.number} ya pasó y sigue pendiente. Cargá sus resultados o suspendela antes de crear otra fecha.`,
+      };
+    }
+
     const { data: lastMatch } = await supabase
       .from("matches")
       .select("number")
