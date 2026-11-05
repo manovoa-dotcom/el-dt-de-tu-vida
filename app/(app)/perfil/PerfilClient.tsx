@@ -6,6 +6,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import ImageCropper from "@/components/ImageCropper";
 import { createClient } from "@/lib/supabase/client";
+import { actualizarAliasPerfil } from "./actions";
 
 type Props = {
   userId: string;
@@ -29,8 +30,12 @@ export default function PerfilClient({
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<string | null>(photoUrl);
+  const [currentAlias, setCurrentAlias] = useState(alias);
+  const [aliasDraft, setAliasDraft] = useState(alias);
+  const [editingAlias, setEditingAlias] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savingAlias, setSavingAlias] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -41,6 +46,25 @@ export default function PerfilClient({
 
   function abrirSelector() {
     fileRef.current?.click();
+  }
+
+  async function guardarAlias(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSavingAlias(true);
+    const result = await actualizarAliasPerfil(aliasDraft);
+    setSavingAlias(false);
+
+    if (!result.ok) {
+      mostrarToast(result.error ?? "No se pudo actualizar el alias");
+      return;
+    }
+
+    const nuevoAlias = aliasDraft.trim();
+    setCurrentAlias(nuevoAlias);
+    setAliasDraft(nuevoAlias);
+    setEditingAlias(false);
+    mostrarToast("¡Alias actualizado!");
+    router.refresh();
   }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -157,7 +181,7 @@ export default function PerfilClient({
           disabled={loading}
         >
           <Avatar
-            alias={alias}
+            alias={currentAlias}
             photoUrl={photo}
             size={120}
             ringColor="var(--gold)"
@@ -187,16 +211,75 @@ export default function PerfilClient({
       {/* Datos */}
       <div className="mx-3 mt-6 rounded-2xl" style={{ background: "var(--g1)" }}>
         <div
-          className="flex items-center justify-between px-4 py-3"
+          className="px-4 py-3"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <span
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "var(--dim)" }}
-          >
-            Alias
-          </span>
-          <span className="text-sm font-bold">{alias}</span>
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--dim)" }}
+            >
+              Alias
+            </span>
+            {!editingAlias && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAliasDraft(currentAlias);
+                  setEditingAlias(true);
+                }}
+                className="text-xs font-semibold"
+                style={{ color: "var(--gold)" }}
+              >
+                Editar
+              </button>
+            )}
+          </div>
+          {editingAlias ? (
+            <form onSubmit={guardarAlias} className="mt-2 flex gap-2">
+              <input
+                autoFocus
+                value={aliasDraft}
+                onChange={(e) => setAliasDraft(e.target.value)}
+                maxLength={60}
+                minLength={2}
+                required
+                aria-label="Nuevo alias"
+                className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: "var(--g0)",
+                  borderColor: "rgba(255,255,255,0.15)",
+                  color: "var(--tx)",
+                }}
+                disabled={savingAlias}
+              />
+              <button
+                type="submit"
+                className="rounded-lg px-3 py-2 text-xs font-bold"
+                style={{ background: "var(--or)", color: "#fff" }}
+                disabled={savingAlias}
+              >
+                {savingAlias ? "Guardando…" : "Guardar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAliasDraft(currentAlias);
+                  setEditingAlias(false);
+                }}
+                className="rounded-lg border px-3 py-2 text-xs"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "var(--tx)" }}
+                disabled={savingAlias}
+              >
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <span className="text-sm font-bold">{currentAlias}</span>
+          )}
+          <p className="mt-1 text-[11px]" style={{ color: "var(--dim)" }}>
+            Se actualizará en tus grupos y en el historial.
+          </p>
         </div>
         <div
           className="flex items-center justify-between px-4 py-3"
