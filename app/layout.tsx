@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   description:
     "El WhatsApp organiza el partido. La cancha genera los resultados. La app convierte esos resultados en un campeonato.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     title: "El DT",
