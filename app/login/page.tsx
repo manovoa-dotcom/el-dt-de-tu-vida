@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -71,16 +72,21 @@ export default function LoginPage() {
       }}
     >
       <div className="w-full max-w-md">
-                <div className="mb-8 text-center">
+        <div className="mb-8 text-center">
           <div
-            className="mx-auto flex h-24 w-24 items-center justify-center rounded-full"
+            className="mx-auto h-36 w-36 overflow-hidden rounded-2xl"
             style={{
-              background: "linear-gradient(160deg, #1b4f39, #11352a)",
-              border: "2px solid var(--gold)",
               boxShadow: "0 8px 24px rgba(242,182,50,0.2)",
             }}
           >
-            <span className="text-5xl">⚽</span>
+            <Image
+              src="/icons/icon-512.png"
+              alt="Escudo de El DT de tu vida"
+              width={512}
+              height={512}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
           <h1 className="bebas mt-4 text-4xl" style={{ color: "var(--tx)" }}>
             El DT de tu vida
