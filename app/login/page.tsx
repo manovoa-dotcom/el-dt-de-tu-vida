@@ -74,16 +74,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div
-            className="mx-auto h-36 w-36 overflow-hidden rounded-2xl"
-            style={{
-              boxShadow: "0 8px 24px rgba(242,182,50,0.2)",
-            }}
+            className="mx-auto h-56 w-56"
           >
             <Image
-              src="/icons/icon-512.png"
+              src="/icons/login-crest.png"
               alt="Escudo de El DT de tu vida"
-              width={512}
-              height={512}
+              width={1024}
+              height={1024}
               priority
               className="h-full w-full object-contain"
             />
