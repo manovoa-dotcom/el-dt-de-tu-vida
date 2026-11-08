@@ -74,7 +74,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div
-            className="mx-auto h-56 w-56"
+            className="mx-auto h-64 w-64"
           >
             <Image
               src="/icons/login-crest.png"
@@ -85,9 +85,6 @@ export default function LoginPage() {
               className="h-full w-full object-contain"
             />
           </div>
-          <h1 className="bebas mt-4 text-4xl" style={{ color: "var(--tx)" }}>
-            El DT de tu vida
-          </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
             Armá tu equipo cada fecha, aunque no te haya tocado jugar.
           </p>
@@ -112,19 +109,23 @@ export default function LoginPage() {
           >
             <div>
               <label
+                htmlFor="login-email"
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
               >
                 Email
               </label>
               <input
+                id="login-email"
                 ref={emailRef}
                 type="email"
                 autoComplete="email"
                 name="email"
                 inputMode="email"
+                autoCapitalize="none"
+                spellCheck={false}
                 placeholder="tu@email.com"
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition focus:ring-2"
+                className="w-full rounded-xl px-4 py-3 text-base outline-none transition focus:ring-2"
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
@@ -135,18 +136,21 @@ export default function LoginPage() {
 
             <div>
               <label
+                htmlFor="login-password"
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
               >
                 Clave (6+ caracteres)
               </label>
               <input
+                id="login-password"
                 ref={claveRef}
                 type="password"
                 autoComplete="current-password"
                 name="password"
+                autoCapitalize="none"
                 placeholder="••••••"
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition focus:ring-2"
+                className="w-full rounded-xl px-4 py-3 text-base outline-none transition focus:ring-2"
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
@@ -174,8 +178,7 @@ export default function LoginPage() {
             )}
 
             <button
-              type="button"
-              onClick={handleLogin}
+              type="submit"
               disabled={loading}
               className="w-full rounded-xl py-3 text-sm font-bold transition disabled:opacity-50"
               style={{ background: "var(--or)", color: "#fff" }}
