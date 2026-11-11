@@ -6,6 +6,7 @@ import LogoutButton from "@/components/LogoutButton";
 import AppBadge from "@/components/AppBadge";
 import OnboardingLayer from "@/components/OnboardingLayer";
 import GroupSwitcher from "@/components/GroupSwitcher";
+import AuthCrest from "@/components/AuthCrest";
 import { getCurrentGroupMembership, getUserGroupMemberships } from "@/lib/group-context";
 
 export default async function AppLayout({
@@ -36,6 +37,7 @@ export default async function AppLayout({
         }}
       >
         <div className="max-w-sm">
+          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
           <div className="text-5xl">📭</div>
           <h1 className="bebas mt-4 text-3xl">Todavía no estás en un grupo</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
@@ -63,6 +65,7 @@ export default async function AppLayout({
         }}
       >
         <div className="max-w-sm">
+          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
           <div className="text-5xl">⏳</div>
           <h1 className="bebas mt-4 text-3xl">Esperando aprobación</h1>
           <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>

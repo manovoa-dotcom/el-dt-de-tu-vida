@@ -1,15 +1,25 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import AuthCrest from "@/components/AuthCrest";
 import { createClient } from "@/lib/supabase/client";
+
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+}
+
+function getGroupSlug() {
+  return new URLSearchParams(window.location.search).get("grupo");
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const groupSlug = useSyncExternalStore(subscribeToLocation, getGroupSlug, () => null);
 
   const emailRef = useRef<HTMLInputElement>(null);
   const claveRef = useRef<HTMLInputElement>(null);
@@ -57,7 +67,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/inicio");
+    router.push(groupSlug ? `/unirse/${encodeURIComponent(groupSlug)}` : "/inicio");
     router.refresh();
   }
 
@@ -76,14 +86,7 @@ export default function LoginPage() {
           <div
             className="mx-auto h-64 w-64"
           >
-            <Image
-              src="/icons/login-crest.png"
-              alt="Escudo de El DT de tu vida"
-              width={1024}
-              height={1024}
-              priority
-              className="h-full w-full object-contain"
-            />
+            <AuthCrest className="h-full w-full object-contain" />
           </div>
           <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
             Armá tu equipo cada fecha, aunque no te haya tocado jugar.
@@ -194,14 +197,20 @@ export default function LoginPage() {
               color: "var(--dim)",
             }}
           >
-            ¿Tenés link del grupo?{" "}
-            <Link
-              href="/unirse/futbol-champagne"
-              className="font-semibold"
-              style={{ color: "var(--gold)" }}
-            >
-              Registrate
-            </Link>
+            {groupSlug ? (
+              <>
+                ¿No tenés cuenta?{" "}
+                <Link
+                  href={`/unirse/${encodeURIComponent(groupSlug)}`}
+                  className="font-semibold"
+                  style={{ color: "var(--gold)" }}
+                >
+                  Creá una y pedí acceso al grupo
+                </Link>
+              </>
+            ) : (
+              "Para registrarte, pedile al admin el enlace de tu grupo."
+            )}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AuthCrest from "@/components/AuthCrest";
 
 export default function RegistroPage() {
   return (
@@ -12,7 +13,7 @@ export default function RegistroPage() {
       }}
     >
       <div className="max-w-sm">
-        <div className="text-5xl">🔗</div>
+        <AuthCrest className="mx-auto h-32 w-32 object-contain" />
         <h1 className="bebas mt-4 text-3xl">Necesitás un link de invitación</h1>
         <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
           Para entrar a un grupo, pedile a alguien que ya esté adentro que te

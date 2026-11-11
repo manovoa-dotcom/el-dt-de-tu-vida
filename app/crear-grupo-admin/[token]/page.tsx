@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AuthCrest from "@/components/AuthCrest";
 import { createClient } from "@/lib/supabase/server";
 import RegistroAdminGrupoClient from "./RegistroAdminGrupoClient";
 
@@ -25,6 +26,7 @@ export default async function CrearGrupoAdminPage({
     >
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
+          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
           <p className="text-xs uppercase tracking-widest" style={{ color: "var(--gold)" }}>
             Invitación para administrar
           </p>

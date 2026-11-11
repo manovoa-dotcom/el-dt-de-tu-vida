@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import AuthCrest from "@/components/AuthCrest";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RecuperarClavePage() {
@@ -40,6 +41,7 @@ export default function RecuperarClavePage() {
     <main className="flex min-h-screen items-center justify-center px-5 py-10" style={{ background: "var(--g0)", backgroundImage: "radial-gradient(circle at 80% -10%, #1e6a47 0, transparent 45%)", color: "var(--tx)" }}>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
+          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
           <h1 className="bebas text-4xl">Recuperar contraseña</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Te vamos a enviar un enlace a tu correo para elegir una clave nueva.</p>
         </div>
