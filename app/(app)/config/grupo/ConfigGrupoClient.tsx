@@ -64,7 +64,7 @@ export default function ConfigGrupoClient({ grupo }: { grupo: Grupo }) {
   }
 
   const linkInvite = grupo.slug
-    ? `https://el-dt-de-tu-vida-2j9n0sxus-el-dt-de-yu-vida.vercel.app/login?grupo=${encodeURIComponent(grupo.slug)}`
+    ? `https://el-dt-de-tu-vida.vercel.app/login?grupo=${encodeURIComponent(grupo.slug)}`
     : null;
 
   let textoBoton = "Guardar cambios";
