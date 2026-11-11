@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import AuthCrest from "@/components/AuthCrest";
@@ -10,10 +10,20 @@ import { createClient } from "@/lib/supabase/client";
 import { notificarNuevoPendiente } from "./actions";
 type Grupo = { id: string; name: string; slug: string };
 
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+}
+
+function getRegistrationStep() {
+  return new URLSearchParams(window.location.search).get("paso") === "registro";
+}
+
 export default function UnirsePage() {
   const router = useRouter();
   const params = useParams();
   const slug = String(params.slug);
+  const pasoRegistro = useSyncExternalStore(subscribeToLocation, getRegistrationStep, () => false);
 
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [grupoLoading, setGrupoLoading] = useState(true);
@@ -35,6 +45,7 @@ export default function UnirsePage() {
   const realNameRef = useRef<HTMLInputElement>(null);
   const claveRef = useRef<HTMLInputElement>(null);
   const clave2Ref = useRef<HTMLInputElement>(null);
+  const mostrarRegistro = !registroCreado && (pasoRegistro || !sesionActiva);
 
   useEffect(() => {
     const supabase = createClient();
@@ -48,7 +59,7 @@ export default function UnirsePage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (data && session?.user) {
+      if (data && session?.user && !pasoRegistro) {
         const { data: membership, error: membershipError } = await supabase
           .from("group_members")
           .select("id")
@@ -69,7 +80,7 @@ export default function UnirsePage() {
       }
       setGrupoLoading(false);
     })();
-  }, [slug, router]);
+  }, [slug, router, pasoRegistro]);
 
   function abrirSelectorFoto() {
     fileRef.current?.click();
@@ -110,7 +121,7 @@ export default function UnirsePage() {
     setLoading(true);
     const supabase = createClient();
 
-    if (registroCreado) {
+    if (registroCreado || (sesionActiva && !pasoRegistro)) {
       if (!emailIngresado) {
         setError("Poné tu email");
         setLoading(false);
@@ -347,9 +358,9 @@ export default function UnirsePage() {
               ? "Solicitud enviada"
               : registroCreado
                 ? "Ingresar y pedir acceso"
-                : sesionActiva
-                ? "Pedir acceso"
-                : "Crear cuenta"}
+                : mostrarRegistro
+                  ? "Crear cuenta"
+                  : "Pedir acceso"}
           </h2>
           {registroCreado && !solicitudEnviada && (
             <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
@@ -371,7 +382,7 @@ export default function UnirsePage() {
             noValidate
             className="mt-4 space-y-4"
           >
-            {!sesionActiva && !registroCreado && <div className="flex flex-col items-center">
+            {mostrarRegistro && <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={abrirSelectorFoto}
@@ -405,7 +416,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {(!sesionActiva || registroCreado) && <div>
+            {(mostrarRegistro || registroCreado) && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -430,7 +441,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && !registroCreado && <div>
+            {mostrarRegistro && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -485,7 +496,7 @@ export default function UnirsePage() {
               </p>
             </div>
 
-            {(!sesionActiva || registroCreado) && <div>
+            {(mostrarRegistro || registroCreado) && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -512,7 +523,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && !registroCreado && <div>
+            {mostrarRegistro && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -561,14 +572,14 @@ export default function UnirsePage() {
               {loading
                 ? registroCreado
                   ? "Ingresando y enviando solicitud..."
-                  : sesionActiva
-                  ? "Enviando solicitud..."
-                  : "Creando..."
+                  : mostrarRegistro
+                    ? "Creando..."
+                    : "Enviando solicitud..."
                 : registroCreado
                   ? "Ingresar y pedir acceso"
-                  : sesionActiva
-                  ? "Pedir acceso"
-                  : "Crear cuenta"}
+                  : mostrarRegistro
+                    ? "Crear cuenta"
+                    : "Pedir acceso"}
             </button>
           </form>
           )}
