@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useSyncExternalStore } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AuthCrest from "@/components/AuthCrest";
 import Avatar from "@/components/Avatar";
@@ -10,20 +10,12 @@ import { createClient } from "@/lib/supabase/client";
 import { notificarNuevoPendiente } from "./actions";
 type Grupo = { id: string; name: string; slug: string };
 
-function subscribeToLocation(callback: () => void) {
-  window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
-}
-
-function getRegistrationStep() {
-  return new URLSearchParams(window.location.search).get("paso") === "registro";
-}
-
 export default function UnirsePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = String(params.slug);
-  const pasoRegistro = useSyncExternalStore(subscribeToLocation, getRegistrationStep, () => false);
+  const pasoRegistro = searchParams.get("paso") === "registro";
 
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [grupoLoading, setGrupoLoading] = useState(true);
