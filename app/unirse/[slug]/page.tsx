@@ -19,7 +19,6 @@ export default function UnirsePage() {
   const [grupoLoading, setGrupoLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [usarCuentaExistente, setUsarCuentaExistente] = useState(false);
   const [sesionActiva, setSesionActiva] = useState(false);
   const [registroCreado, setRegistroCreado] = useState(false);
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
@@ -66,7 +65,6 @@ export default function UnirsePage() {
 
         setAlias(String(session.user.user_metadata.display_name ?? ""));
         setSesionActiva(true);
-        setUsarCuentaExistente(true);
       }
       setGrupoLoading(false);
     })();
@@ -156,24 +154,6 @@ export default function UnirsePage() {
       return;
     }
 
-    if (usarCuentaExistente) {
-      if (!email) {
-        setError("Poné tu email");
-        setLoading(false);
-        return;
-      }
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password: clave });
-      if (loginError) {
-        setError("No se pudo ingresar. Revisá el correo y la clave de esa cuenta.");
-        setLoading(false);
-        return;
-      }
-      setAlias(String(loginData.user.user_metadata.display_name ?? ""));
-      setSesionActiva(true);
-      setLoading(false);
-      return;
-    }
-
     if (!email) {
       setError("Poné tu email");
       setLoading(false);
@@ -214,13 +194,13 @@ export default function UnirsePage() {
 
     if (errSignUp) {
       console.error(errSignUp);
-      setError("No se pudo crear la cuenta. Revisá el correo. Si ya tenés una cuenta, elegí “Ya tengo cuenta”.");
+      setError("No se pudo crear la cuenta. Revisá el correo e intentá de nuevo.");
       setLoading(false);
       return;
     }
 
     if (signUpData.user && !signUpData.user.identities?.length) {
-      setError("Ese correo ya tiene una cuenta. Elegí “Ya tengo cuenta” para entrar con ese mismo correo.");
+      setError("Ese correo ya tiene una cuenta. Volvé al ingreso e iniciá sesión con ese correo.");
       setLoading(false);
       return;
     }
@@ -328,9 +308,7 @@ export default function UnirsePage() {
                 ? "Pedir acceso"
                 : registroCreado
                   ? "Confirmá tu cuenta"
-                  : usarCuentaExistente
-                    ? "Ingresar"
-                    : "Crear cuenta"}
+                  : "Crear cuenta"}
           </h2>
           {registroCreado && !sesionActiva && (
             <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
@@ -360,7 +338,7 @@ export default function UnirsePage() {
             noValidate
             className="mt-4 space-y-4"
           >
-            {!sesionActiva && !usarCuentaExistente && <div className="flex flex-col items-center">
+            {!sesionActiva && <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={abrirSelectorFoto}
@@ -417,7 +395,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && !usarCuentaExistente && <div>
+            {!sesionActiva && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -443,7 +421,7 @@ export default function UnirsePage() {
               </p>
             </div>}
 
-            {(sesionActiva || !usarCuentaExistente) && <div>
+            <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -470,21 +448,21 @@ export default function UnirsePage() {
               <p className="mt-1 text-[11px]" style={{ color: "var(--dim)" }}>
                 Así te ve todo el grupo. Debe ser único.
               </p>
-            </div>}
+            </div>
 
             {!sesionActiva && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
               >
-                {usarCuentaExistente ? "Clave de tu cuenta" : "Clave (6+ caracteres)"}
+                Clave (6+ caracteres)
               </label>
               <input
                 ref={claveRef}
                 type="password"
                 minLength={6}
                 maxLength={30}
-                autoComplete={usarCuentaExistente ? "current-password" : "new-password"}
+                autoComplete="new-password"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
@@ -499,7 +477,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && !usarCuentaExistente && <div>
+            {!sesionActiva && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -548,26 +526,13 @@ export default function UnirsePage() {
               {loading
                 ? sesionActiva
                   ? "Enviando solicitud..."
-                  : usarCuentaExistente
-                    ? "Ingresando..."
-                    : "Creando..."
+                  : "Creando..."
                 : sesionActiva
                   ? "Pedir acceso"
-                  : usarCuentaExistente
-                    ? "Ingresar"
-                    : "Crear cuenta"}
+                  : "Crear cuenta"}
             </button>
           </form>
           )}
-
-          {!solicitudEnviada && !sesionActiva && <button
-            type="button"
-            onClick={() => { setUsarCuentaExistente((actual) => !actual); setError(null); }}
-            className="mt-4 w-full text-center text-sm font-semibold"
-            style={{ color: "var(--gold)" }}
-          >
-            {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: entrar con mi correo"}
-          </button>}
 
           {!solicitudEnviada && <p
             className="mt-5 text-center text-xs leading-relaxed"
@@ -576,15 +541,6 @@ export default function UnirsePage() {
             Un admin del grupo tiene que aprobar tu cuenta antes de que entres.
           </p>}
 
-          {!sesionActiva && <div
-            className="mt-5 border-t pt-4 text-center text-sm"
-            style={{
-              borderColor: "rgba(255,255,255,0.08)",
-              color: "var(--dim)",
-            }}
-          >
-            ¿Ya tenés cuenta? Usá la opción de arriba para entrar con tu correo sin crear otra cuenta.
-          </div>}
         </div>
       </div>
 
