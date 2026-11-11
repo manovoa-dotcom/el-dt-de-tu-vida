@@ -18,7 +18,7 @@ export default function UnirsePage() {
   const [grupoLoading, setGrupoLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [usarCuentaExistente, setUsarCuentaExistente] = useState(false);
+  const [usarCuentaExistente, setUsarCuentaExistente] = useState(true);
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
 
   // Foto
