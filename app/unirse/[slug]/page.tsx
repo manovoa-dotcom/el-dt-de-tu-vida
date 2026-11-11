@@ -29,6 +29,7 @@ export default function UnirsePage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
 
   const emailRef = useRef<HTMLInputElement>(null);
   const realNameRef = useRef<HTMLInputElement>(null);
@@ -97,7 +98,7 @@ export default function UnirsePage() {
   async function handleCrear() {
     setError(null);
 
-    const email = emailRef.current?.value.trim() ?? "";
+    const emailIngresado = emailRef.current?.value.trim() ?? email.trim();
     const realName = realNameRef.current?.value.trim() ?? "";
     const aliasIngresado = alias.trim();
     const clave = claveRef.current?.value ?? "";
@@ -109,52 +110,43 @@ export default function UnirsePage() {
     setLoading(true);
     const supabase = createClient();
 
-    if (sesionActiva) {
+    if (registroCreado) {
+      if (!emailIngresado) {
+        setError("Poné tu email");
+        setLoading(false);
+        return;
+      }
+      if (clave.length < 6) {
+        setError("La clave necesita 6 caracteres mínimo");
+        setLoading(false);
+        return;
+      }
       if (aliasIngresado.length < 2) {
         setError("El alias es muy corto");
         setLoading(false);
         return;
       }
 
-      const { data: disponible, error: errCheck } = await supabase.rpc(
-        "check_alias_disponible",
-        { p_slug: slug, p_alias: aliasIngresado }
-      );
-
-      if (errCheck) {
-        console.error(errCheck);
-        setError("Error al verificar el alias. Probá de nuevo.");
-        setLoading(false);
-        return;
-      }
-      if (!disponible) {
-        setError("Ese alias ya está en uso. Probá otro.");
-        setLoading(false);
-        return;
-      }
-
-      const { error: joinError } = await supabase.rpc("accept_group_invite_for_existing_user", {
-        p_group_id: grupoActual.id,
-        p_display_name: aliasIngresado,
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: emailIngresado,
+        password: clave,
       });
-      if (joinError) {
-        setError(joinError.message);
+      if (loginError) {
+        setError("No se pudo ingresar. Revisá el correo y la clave de esa cuenta.");
         setLoading(false);
         return;
       }
 
-      try {
-        await notificarNuevoPendiente(grupoActual.id, aliasIngresado);
-      } catch (err) {
-        console.error("Error notificando a admins:", err);
-      }
-
-      setSolicitudEnviada(true);
-      setLoading(false);
+      await enviarSolicitudAcceso(grupoActual.id, aliasIngresado, supabase);
       return;
     }
 
-    if (!email) {
+    if (sesionActiva) {
+      await enviarSolicitudAcceso(grupoActual.id, aliasIngresado, supabase);
+      return;
+    }
+
+    if (!emailIngresado) {
       setError("Poné tu email");
       setLoading(false);
       return;
@@ -181,7 +173,7 @@ export default function UnirsePage() {
     }
 
     const { data: signUpData, error: errSignUp } = await supabase.auth.signUp({
-      email,
+      email: emailIngresado,
       password: clave,
       options: {
         data: {
@@ -208,7 +200,7 @@ export default function UnirsePage() {
     // Subir foto si hay
     if (photoBlob && signUpData.user) {
       const userId = signUpData.user.id;
-      const path = `${userId}/avatar-${Date.now()}.jpg`;
+      const path = `${userId}/avatar-${crypto.randomUUID()}.jpg`;
 
       const { error: upErr } = await supabase.storage
         .from("avatars")
@@ -231,6 +223,55 @@ export default function UnirsePage() {
 
     setSesionActiva(Boolean(signUpData.session));
     setRegistroCreado(true);
+    setLoading(false);
+  }
+
+  async function enviarSolicitudAcceso(
+    grupoId: string,
+    aliasIngresado: string,
+    supabase: ReturnType<typeof createClient>
+  ) {
+    if (aliasIngresado.length < 2) {
+      setError("El alias es muy corto");
+      setLoading(false);
+      return;
+    }
+
+    const { data: disponible, error: errCheck } = await supabase.rpc(
+      "check_alias_disponible",
+      { p_slug: slug, p_alias: aliasIngresado }
+    );
+
+    if (errCheck) {
+      console.error(errCheck);
+      setError("Error al verificar el alias. Probá de nuevo.");
+      setLoading(false);
+      return;
+    }
+    if (!disponible) {
+      setError("Ese alias ya está en uso. Probá otro.");
+      setLoading(false);
+      return;
+    }
+
+    const { error: joinError } = await supabase.rpc("accept_group_invite_for_existing_user", {
+      p_group_id: grupoId,
+      p_display_name: aliasIngresado,
+    });
+    if (joinError) {
+      setError(joinError.message);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await notificarNuevoPendiente(grupoId, aliasIngresado);
+    } catch (err) {
+      console.error("Error notificando a admins:", err);
+    }
+
+    setSesionActiva(true);
+    setSolicitudEnviada(true);
     setLoading(false);
   }
 
@@ -304,15 +345,15 @@ export default function UnirsePage() {
           <h2 className="bebas text-2xl">
             {solicitudEnviada
               ? "Solicitud enviada"
-              : sesionActiva
+              : registroCreado
+                ? "Ingresar y pedir acceso"
+                : sesionActiva
                 ? "Pedir acceso"
-                : registroCreado
-                  ? "Confirmá tu cuenta"
-                  : "Crear cuenta"}
+                : "Crear cuenta"}
           </h2>
-          {registroCreado && !sesionActiva && (
+          {registroCreado && !solicitudEnviada && (
             <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
-              Cuenta creada. Confirmá tu correo si te lo solicitaron y luego ingresá para pedir acceso a este grupo.
+              Cuenta creada. Si te lo solicitan, confirmá tu correo y después ingresá con tu email y clave para pedir acceso.
             </p>
           )}
 
@@ -321,14 +362,6 @@ export default function UnirsePage() {
               Tu solicitud fue enviada. Cuando el admin la apruebe, este grupo aparecerá en el selector dentro de la aplicación.
               <Link href="/inicio" className="mt-3 block font-bold" style={{ color: "var(--gold)" }}>Volver a mis grupos</Link>
             </div>
-          ) : registroCreado && !sesionActiva ? (
-            <Link
-              href={`/login?grupo=${encodeURIComponent(slug)}`}
-              className="mt-5 block w-full rounded-xl py-3 text-center text-sm font-bold"
-              style={{ background: "var(--or)", color: "#fff" }}
-            >
-              Ir a ingresar y pedir acceso
-            </Link>
           ) : (
             <form
             onSubmit={(e) => {
@@ -338,7 +371,7 @@ export default function UnirsePage() {
             noValidate
             className="mt-4 space-y-4"
           >
-            {!sesionActiva && <div className="flex flex-col items-center">
+            {!sesionActiva && !registroCreado && <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={abrirSelectorFoto}
@@ -372,7 +405,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && <div>
+            {(!sesionActiva || registroCreado) && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -385,6 +418,8 @@ export default function UnirsePage() {
                 autoComplete="email"
                 name="email"
                 inputMode="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
                 className="w-full rounded-xl px-4 py-3 text-sm outline-none"
                 style={{
@@ -395,7 +430,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && <div>
+            {!sesionActiva && !registroCreado && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -450,19 +485,19 @@ export default function UnirsePage() {
               </p>
             </div>
 
-            {!sesionActiva && <div>
+            {(!sesionActiva || registroCreado) && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
               >
-                Clave (6+ caracteres)
+                {registroCreado ? "Clave de tu cuenta" : "Clave (6+ caracteres)"}
               </label>
               <input
                 ref={claveRef}
                 type="password"
                 minLength={6}
                 maxLength={30}
-                autoComplete="new-password"
+                autoComplete={registroCreado ? "current-password" : "new-password"}
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
@@ -477,7 +512,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!sesionActiva && <div>
+            {!sesionActiva && !registroCreado && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -524,10 +559,14 @@ export default function UnirsePage() {
               style={{ background: "var(--or)", color: "#fff" }}
             >
               {loading
-                ? sesionActiva
+                ? registroCreado
+                  ? "Ingresando y enviando solicitud..."
+                  : sesionActiva
                   ? "Enviando solicitud..."
                   : "Creando..."
-                : sesionActiva
+                : registroCreado
+                  ? "Ingresar y pedir acceso"
+                  : sesionActiva
                   ? "Pedir acceso"
                   : "Crear cuenta"}
             </button>
