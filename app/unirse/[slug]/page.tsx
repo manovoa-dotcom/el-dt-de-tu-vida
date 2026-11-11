@@ -64,6 +64,7 @@ export default function UnirsePage() {
           return;
         }
 
+        setAlias(String(session.user.user_metadata.display_name ?? ""));
         setSesionActiva(true);
         setUsarCuentaExistente(true);
       }
@@ -104,51 +105,34 @@ export default function UnirsePage() {
     const clave = claveRef.current?.value ?? "";
     const clave2 = clave2Ref.current?.value ?? "";
 
-    if (!usarCuentaExistente && !email) return setError("Poné tu email");
-    if (usarCuentaExistente && !sesionActiva && !email) return setError("Poné tu email");
-    if (!usarCuentaExistente && realName.length < 2) return setError("Poné tu nombre real");
-    if (aliasIngresado.length < 2) return setError("El alias es muy corto");
-    if (!sesionActiva && clave.length < 6)
-      return setError("La clave necesita 6 caracteres mínimo");
-    if (!usarCuentaExistente && clave !== clave2) return setError("Las claves no coinciden");
-
     const grupoActual = grupo;
     if (!grupoActual) return setError("No se pudo cargar el grupo. Recargá la página y probá de nuevo.");
 
     setLoading(true);
     const supabase = createClient();
 
-    // Verificar alias
-    const { data: disponible, error: errCheck } = await supabase.rpc(
-      "check_alias_disponible",
-      { p_slug: slug, p_alias: aliasIngresado }
-    );
+    if (sesionActiva) {
+      if (aliasIngresado.length < 2) {
+        setError("El alias es muy corto");
+        setLoading(false);
+        return;
+      }
 
-    if (errCheck) {
-      console.error(errCheck);
-      setError("Error al verificar el alias. Probá de nuevo.");
-      setLoading(false);
-      return;
-    }
-    if (!disponible) {
-      setError("Ese alias ya está en uso. Probá otro.");
-      setLoading(false);
-      return;
-    }
+      const { data: disponible, error: errCheck } = await supabase.rpc(
+        "check_alias_disponible",
+        { p_slug: slug, p_alias: aliasIngresado }
+      );
 
-    if (usarCuentaExistente) {
-      if (!sesionActiva) {
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: clave });
-        if (loginError) {
-          setError(
-            registroCreado
-              ? "La cuenta se creó. Si te pidieron confirmar el correo, confirmalo y después ingresá para pedir acceso."
-              : "No se pudo ingresar. Revisá el correo y la clave de esa cuenta."
-          );
-          setLoading(false);
-          return;
-        }
-        setSesionActiva(true);
+      if (errCheck) {
+        console.error(errCheck);
+        setError("Error al verificar el alias. Probá de nuevo.");
+        setLoading(false);
+        return;
+      }
+      if (!disponible) {
+        setError("Ese alias ya está en uso. Probá otro.");
+        setLoading(false);
+        return;
       }
 
       const { error: joinError } = await supabase.rpc("accept_group_invite_for_existing_user", {
@@ -172,7 +156,50 @@ export default function UnirsePage() {
       return;
     }
 
-    // Crear cuenta nueva
+    if (usarCuentaExistente) {
+      if (!email) {
+        setError("Poné tu email");
+        setLoading(false);
+        return;
+      }
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password: clave });
+      if (loginError) {
+        setError("No se pudo ingresar. Revisá el correo y la clave de esa cuenta.");
+        setLoading(false);
+        return;
+      }
+      setAlias(String(loginData.user.user_metadata.display_name ?? ""));
+      setSesionActiva(true);
+      setLoading(false);
+      return;
+    }
+
+    if (!email) {
+      setError("Poné tu email");
+      setLoading(false);
+      return;
+    }
+    if (realName.length < 2) {
+      setError("Poné tu nombre real");
+      setLoading(false);
+      return;
+    }
+    if (aliasIngresado.length < 2) {
+      setError("El alias es muy corto");
+      setLoading(false);
+      return;
+    }
+    if (clave.length < 6) {
+      setError("La clave necesita 6 caracteres mínimo");
+      setLoading(false);
+      return;
+    }
+    if (clave !== clave2) {
+      setError("Las claves no coinciden");
+      setLoading(false);
+      return;
+    }
+
     const { data: signUpData, error: errSignUp } = await supabase.auth.signUp({
       email,
       password: clave,
@@ -222,7 +249,6 @@ export default function UnirsePage() {
       }
     }
 
-    setUsarCuentaExistente(true);
     setSesionActiva(Boolean(signUpData.session));
     setRegistroCreado(true);
     setLoading(false);
@@ -235,7 +261,7 @@ export default function UnirsePage() {
         style={{ background: "var(--g0)", color: "var(--dim)" }}
       >
         <div className="text-center">
-          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
+          <AuthCrest className="mx-auto h-40 w-40 object-contain" />
           <p className="mt-3">Cargando...</p>
         </div>
       </main>
@@ -278,7 +304,7 @@ export default function UnirsePage() {
     >
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <AuthCrest className="mx-auto h-32 w-32 object-contain" />
+          <AuthCrest className="mx-auto h-40 w-40 object-contain" />
           <p
             className="text-xs uppercase tracking-widest"
             style={{ color: "var(--gold)" }}
@@ -295,58 +321,38 @@ export default function UnirsePage() {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <h2 className="bebas text-2xl">{usarCuentaExistente ? "Ingresar y pedir acceso" : "Crear cuenta"}</h2>
-          {registroCreado && (
+          <h2 className="bebas text-2xl">
+            {solicitudEnviada
+              ? "Solicitud enviada"
+              : sesionActiva
+                ? "Pedir acceso"
+                : registroCreado
+                  ? "Confirmá tu cuenta"
+                  : usarCuentaExistente
+                    ? "Ingresar"
+                    : "Crear cuenta"}
+          </h2>
+          {registroCreado && !sesionActiva && (
             <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
-              {sesionActiva
-                ? "Cuenta creada. Ahora pedí acceso a este grupo."
-                : "Cuenta creada. Ahora ingresá con esos mismos datos y pedí acceso a este grupo."}
+              Cuenta creada. Confirmá tu correo si te lo solicitaron y luego ingresá para pedir acceso a este grupo.
             </p>
           )}
-
-          {/* Foto */}
-          {!usarCuentaExistente && <div className="mt-5 flex flex-col items-center">
-            <button
-              type="button"
-              onClick={abrirSelectorFoto}
-              className="relative"
-            >
-              <Avatar
-                alias={alias || "?"}
-                photoUrl={photoPreview}
-                size={92}
-                ringColor="var(--gold)"
-              />
-              <div
-                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full text-sm"
-                style={{
-                  background: "var(--or)",
-                  border: "2px solid var(--g1)",
-                }}
-              >
-                📷
-              </div>
-            </button>
-            <p className="mt-2 text-[11px]" style={{ color: "var(--dim)" }}>
-              {photoPreview
-                ? "Tocá para cambiar la foto"
-                : "Subí una foto (opcional)"}
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={onFileChange}
-              className="hidden"
-            />
-          </div>}
 
           {solicitudEnviada ? (
             <div className="mt-5 rounded-xl p-4 text-sm" style={{ background: "rgba(242,182,50,0.12)", color: "var(--gold)" }}>
               Tu solicitud fue enviada. Cuando el admin la apruebe, este grupo aparecerá en el selector dentro de la aplicación.
               <Link href="/inicio" className="mt-3 block font-bold" style={{ color: "var(--gold)" }}>Volver a mis grupos</Link>
             </div>
-          ) : <form
+          ) : registroCreado && !sesionActiva ? (
+            <Link
+              href={`/login?grupo=${encodeURIComponent(slug)}`}
+              className="mt-5 block w-full rounded-xl py-3 text-center text-sm font-bold"
+              style={{ background: "var(--or)", color: "#fff" }}
+            >
+              Ir a ingresar y pedir acceso
+            </Link>
+          ) : (
+            <form
             onSubmit={(e) => {
               e.preventDefault();
               handleCrear();
@@ -354,6 +360,40 @@ export default function UnirsePage() {
             noValidate
             className="mt-4 space-y-4"
           >
+            {!sesionActiva && !usarCuentaExistente && <div className="flex flex-col items-center">
+              <button
+                type="button"
+                onClick={abrirSelectorFoto}
+                className="relative"
+              >
+                <Avatar
+                  alias={alias || "?"}
+                  photoUrl={photoPreview}
+                  size={92}
+                  ringColor="var(--gold)"
+                />
+                <div
+                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full text-sm"
+                  style={{
+                    background: "var(--or)",
+                    border: "2px solid var(--g1)",
+                  }}
+                >
+                  📷
+                </div>
+              </button>
+              <p className="mt-2 text-[11px]" style={{ color: "var(--dim)" }}>
+                {photoPreview ? "Tocá para cambiar la foto" : "Subí una foto (opcional)"}
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                className="hidden"
+              />
+            </div>}
+
             {!sesionActiva && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
@@ -377,7 +417,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!usarCuentaExistente && <div>
+            {!sesionActiva && !usarCuentaExistente && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -403,7 +443,7 @@ export default function UnirsePage() {
               </p>
             </div>}
 
-            <div>
+            {(sesionActiva || !usarCuentaExistente) && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -430,7 +470,7 @@ export default function UnirsePage() {
               <p className="mt-1 text-[11px]" style={{ color: "var(--dim)" }}>
                 Así te ve todo el grupo. Debe ser único.
               </p>
-            </div>
+            </div>}
 
             {!sesionActiva && <div>
               <label
@@ -459,7 +499,7 @@ export default function UnirsePage() {
               />
             </div>}
 
-            {!usarCuentaExistente && <div>
+            {!sesionActiva && !usarCuentaExistente && <div>
               <label
                 className="mb-1 block text-xs font-semibold uppercase tracking-wider"
                 style={{ color: "var(--dim)" }}
@@ -506,14 +546,19 @@ export default function UnirsePage() {
               style={{ background: "var(--or)", color: "#fff" }}
             >
               {loading
-                ? usarCuentaExistente
-                  ? sesionActiva ? "Enviando solicitud..." : "Ingresando..."
-                  : "Creando..."
-                : usarCuentaExistente
-                  ? sesionActiva ? "Pedir acceso" : "Ingresar y pedir acceso"
-                  : "Crear cuenta"}
+                ? sesionActiva
+                  ? "Enviando solicitud..."
+                  : usarCuentaExistente
+                    ? "Ingresando..."
+                    : "Creando..."
+                : sesionActiva
+                  ? "Pedir acceso"
+                  : usarCuentaExistente
+                    ? "Ingresar"
+                    : "Crear cuenta"}
             </button>
-          </form>}
+          </form>
+          )}
 
           {!solicitudEnviada && !sesionActiva && <button
             type="button"
@@ -524,12 +569,12 @@ export default function UnirsePage() {
             {usarCuentaExistente ? "Quiero crear una cuenta nueva" : "Ya tengo cuenta: entrar con mi correo"}
           </button>}
 
-          <p
+          {!solicitudEnviada && <p
             className="mt-5 text-center text-xs leading-relaxed"
             style={{ color: "var(--dim)" }}
           >
             Un admin del grupo tiene que aprobar tu cuenta antes de que entres.
-          </p>
+          </p>}
 
           {!sesionActiva && <div
             className="mt-5 border-t pt-4 text-center text-sm"

@@ -201,11 +201,11 @@ export default function LoginPage() {
               <>
                 ¿No tenés cuenta?{" "}
                 <Link
-                  href={`/unirse/${encodeURIComponent(groupSlug)}`}
+                  href={`/unirse/${encodeURIComponent(groupSlug)}?paso=registro`}
                   className="font-semibold"
                   style={{ color: "var(--gold)" }}
                 >
-                  Creá una y pedí acceso al grupo
+                  Registrate
                 </Link>
               </>
             ) : (
