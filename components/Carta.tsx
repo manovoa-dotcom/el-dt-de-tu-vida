@@ -36,7 +36,7 @@ export default function Carta({
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className="flex flex-col items-center rounded-2xl transition"
+      className="flex touch-manipulation flex-col items-center rounded-2xl transition"
       style={{
         background: "#0a2818",
         padding: s.pad,
