@@ -35,6 +35,9 @@ export default function ResultadosClient({
 }: Props) {
   const router = useRouter();
   const [verSelector, setVerSelector] = useState(false);
+  const [dtSeleccionado, setDtSeleccionado] = useState<DTResultado | null>(
+    null
+  );
 
   function cambiarFecha(number: number) {
     setVerSelector(false);
@@ -135,23 +138,110 @@ export default function ResultadosClient({
           </div>
           <div className="mt-3 flex items-end justify-center gap-2 px-3">
             {podio.length === 1 && (
-              <PodioDT dt={podio[0]} posicion={1} />
+              <PodioDT
+                dt={podio[0]}
+                posicion={1}
+                onClick={() => setDtSeleccionado(podio[0])}
+              />
             )}
             {podio.length === 2 && (
               <>
-                <PodioDT dt={podio[1]} posicion={2} />
-                <PodioDT dt={podio[0]} posicion={1} />
+                <PodioDT
+                  dt={podio[1]}
+                  posicion={2}
+                  onClick={() => setDtSeleccionado(podio[1])}
+                />
+                <PodioDT
+                  dt={podio[0]}
+                  posicion={1}
+                  onClick={() => setDtSeleccionado(podio[0])}
+                />
               </>
             )}
             {podio.length >= 3 && (
               <>
-                <PodioDT dt={podio[1]} posicion={2} />
-                <PodioDT dt={podio[0]} posicion={1} />
-                <PodioDT dt={podio[2]} posicion={3} />
+                <PodioDT
+                  dt={podio[1]}
+                  posicion={2}
+                  onClick={() => setDtSeleccionado(podio[1])}
+                />
+                <PodioDT
+                  dt={podio[0]}
+                  posicion={1}
+                  onClick={() => setDtSeleccionado(podio[0])}
+                />
+                <PodioDT
+                  dt={podio[2]}
+                  posicion={3}
+                  onClick={() => setDtSeleccionado(podio[2])}
+                />
               </>
             )}
           </div>
+          <p className="mt-2 text-center text-[11px]" style={{ color: "var(--dim)" }}>
+            Tocá una carta para ver el equipo armado
+          </p>
         </>
+      )}
+
+      {dtSeleccionado && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-3 py-6">
+          <button
+            type="button"
+            aria-label="Cerrar equipo"
+            onClick={() => setDtSeleccionado(null)}
+            className="absolute inset-0 bg-black/75"
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="equipo-dt-titulo"
+            className="relative max-h-full w-full max-w-lg overflow-y-auto rounded-2xl p-4"
+            style={{
+              background: "var(--g1)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2
+                  id="equipo-dt-titulo"
+                  className="bebas text-xl tracking-wider"
+                >
+                  EQUIPO DE {dtSeleccionado.alias}
+                </h2>
+                <p className="text-xs" style={{ color: "var(--dim)" }}>
+                  Fecha {partidoActual.number} · {dtSeleccionado.points} puntos
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDtSeleccionado(null)}
+                aria-label="Cerrar equipo"
+                className="rounded-lg px-2 py-1 text-lg"
+                style={{ color: "var(--dim)" }}
+              >
+                ×
+              </button>
+            </div>
+
+            {dtSeleccionado.picks_count > 0 ? (
+              <div className="mt-3">
+                <CanchaEquipo
+                  titulares={dtSeleccionado.equipo.titulares}
+                  suplente={dtSeleccionado.equipo.suplente}
+                />
+              </div>
+            ) : (
+              <p
+                className="mt-4 rounded-xl p-4 text-center text-sm"
+                style={{ background: "var(--g2)", color: "var(--dim)" }}
+              >
+                No hay jugadores registrados en este equipo.
+              </p>
+            )}
+          </section>
+        </div>
       )}
 
       {/* Cancha con el Equipo Ideal */}
@@ -204,9 +294,11 @@ export default function ResultadosClient({
 function PodioDT({
   dt,
   posicion,
+  onClick,
 }: {
   dt: DTResultado;
   posicion: 1 | 2 | 3;
+  onClick: () => void;
 }) {
   const medalla = posicion === 1 ? "🥇" : posicion === 2 ? "🥈" : "🥉";
   return (
@@ -218,6 +310,7 @@ function PodioDT({
         puntos={dt.points}
         posicion={posicion}
         size="sm"
+        onClick={onClick}
       />
     </div>
   );

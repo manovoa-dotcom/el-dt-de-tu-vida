@@ -17,12 +17,21 @@ export type JugadorResultado = {
   items: ItemGanado[];
 };
 
+export type JugadorEquipoDT = Pick<
+  JugadorResultado,
+  "member_id" | "alias" | "photo_url" | "points"
+>;
+
 export type DTResultado = {
   member_id: string;
   alias: string;
   photo_url: string | null;
   points: number;
   picks_count: number;
+  equipo: {
+    titulares: JugadorEquipoDT[];
+    suplente: JugadorEquipoDT | null;
+  };
 };
 
 export type PartidoResumen = {
@@ -160,12 +169,39 @@ export default async function ResultadosPage({
     .eq("match_id", partidoActual.id)
     .order("points", { ascending: false });
 
-    // Info de todos los miembros involucrados
+  const { data: fantasyTeamsRaw, error: fantasyTeamsError } = await supabase
+    .from("fantasy_teams")
+    .select("id, dt_member_id")
+    .eq("match_id", partidoActual.id);
+
+  if (fantasyTeamsError) {
+    console.error("Error fetching fantasy_teams:", fantasyTeamsError);
+  }
+
+  let fantasyPicksRaw: { team_id: string; member_id: string; slot: string }[] =
+    [];
+  if (fantasyTeamsRaw && fantasyTeamsRaw.length > 0) {
+    const { data: picks, error: fantasyPicksError } = await supabase
+      .from("fantasy_picks")
+      .select("team_id, member_id, slot")
+      .in(
+        "team_id",
+        fantasyTeamsRaw.map((team) => team.id)
+      );
+
+    if (fantasyPicksError) {
+      console.error("Error fetching fantasy_picks:", fantasyPicksError);
+    }
+    fantasyPicksRaw = picks ?? [];
+  }
+
+  // Info de todos los miembros involucrados
   const allMemberIds = new Set<string>();
   for (const a of asistencias ?? []) allMemberIds.add(a.member_id);
   for (const s of scoresRaw ?? []) allMemberIds.add(s.member_id);
   for (const d of dtScoresRaw ?? []) allMemberIds.add(d.dt_member_id);
   for (const w of winsRaw ?? []) allMemberIds.add(w.member_id);
+  for (const p of fantasyPicksRaw) allMemberIds.add(p.member_id);
 
   const { data: miembrosRaw } = await supabase
     .from("group_members")
@@ -214,14 +250,50 @@ export default async function ResultadosPage({
     .sort((a, b) => b.points - a.points);
 
   // DTs con puntaje
+  const picksPorTeam = new Map<
+    string,
+    { member_id: string; slot: string }[]
+  >();
+  for (const pick of fantasyPicksRaw) {
+    if (!picksPorTeam.has(pick.team_id)) picksPorTeam.set(pick.team_id, []);
+    picksPorTeam.get(pick.team_id)!.push({
+      member_id: pick.member_id,
+      slot: pick.slot,
+    });
+  }
+
+  const teamPorDT = new Map(
+    (fantasyTeamsRaw ?? []).map((team) => [team.dt_member_id, team])
+  );
+  const mapJugadorEquipo = (memberId: string): JugadorEquipoDT => {
+    const miembro = miembrosMap.get(memberId);
+    return {
+      member_id: memberId,
+      alias: miembro?.alias ?? "—",
+      photo_url: miembro?.photo_url ?? null,
+      points: scoresMap.get(memberId) ?? 0,
+    };
+  };
+
   const dts: DTResultado[] = (dtScoresRaw ?? []).map((d) => {
     const m = miembrosMap.get(d.dt_member_id);
+    const team = teamPorDT.get(d.dt_member_id);
+    const picks = team ? picksPorTeam.get(team.id) ?? [] : [];
+    const suplentePick = picks.find((pick) => pick.slot === "suplente");
     return {
       member_id: d.dt_member_id,
       alias: m?.alias ?? "—",
       photo_url: m?.photo_url ?? null,
       points: d.points,
-      picks_count: 0,
+      picks_count: picks.length,
+      equipo: {
+        titulares: picks
+          .filter((pick) => pick.slot === "titular")
+          .map((pick) => mapJugadorEquipo(pick.member_id)),
+        suplente: suplentePick
+          ? mapJugadorEquipo(suplentePick.member_id)
+          : null,
+      },
     };
   });
 
