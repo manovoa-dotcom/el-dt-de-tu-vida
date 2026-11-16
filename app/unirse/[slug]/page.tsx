@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import AuthCrest from "@/components/AuthCrest";
 import Avatar from "@/components/Avatar";
@@ -13,9 +13,7 @@ type Grupo = { id: string; name: string; slug: string };
 export default function UnirsePage() {
   const router = useRouter();
   const params = useParams();
-  const searchParams = useSearchParams();
   const slug = String(params.slug);
-  const pasoRegistro = searchParams.get("paso") === "registro";
 
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [grupoLoading, setGrupoLoading] = useState(true);
@@ -37,7 +35,7 @@ export default function UnirsePage() {
   const realNameRef = useRef<HTMLInputElement>(null);
   const claveRef = useRef<HTMLInputElement>(null);
   const clave2Ref = useRef<HTMLInputElement>(null);
-  const mostrarRegistro = !registroCreado && (pasoRegistro || !sesionActiva);
+  const mostrarRegistro = !registroCreado && !sesionActiva;
 
   useEffect(() => {
     const supabase = createClient();
@@ -51,7 +49,7 @@ export default function UnirsePage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (data && session?.user && !pasoRegistro) {
+      if (data && session?.user) {
         const { data: membership, error: membershipError } = await supabase
           .from("group_members")
           .select("id")
@@ -72,7 +70,7 @@ export default function UnirsePage() {
       }
       setGrupoLoading(false);
     })();
-  }, [slug, router, pasoRegistro]);
+  }, [slug, router]);
 
   function abrirSelectorFoto() {
     fileRef.current?.click();
@@ -113,7 +111,7 @@ export default function UnirsePage() {
     setLoading(true);
     const supabase = createClient();
 
-    if (registroCreado || (sesionActiva && !pasoRegistro)) {
+    if (registroCreado) {
       if (!emailIngresado) {
         setError("Poné tu email");
         setLoading(false);
