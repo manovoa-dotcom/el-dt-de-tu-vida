@@ -271,6 +271,21 @@ export default function ResultadosClient({
           </p>
         )}
       </div>
+
+      {/* Todos los DT */}
+      <div className="bebas mt-6 px-4 text-xl tracking-wider">
+        DTS ({dts.length})
+      </div>
+      <div className="mt-1">
+        {dts.map((dt) => (
+          <FilaDT key={dt.member_id} dt={dt} />
+        ))}
+        {dts.length === 0 && (
+          <p className="px-4 py-3 text-xs" style={{ color: "var(--dim)" }}>
+            No hay puntajes de DT registrados esta fecha.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -357,6 +372,28 @@ function FilaJugador({
         }}
       >
         {j.points}
+      </span>
+    </div>
+  );
+}
+
+function FilaDT({ dt }: { dt: DTResultado }) {
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2"
+      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <Avatar alias={dt.alias} photoUrl={dt.photo_url} size={36} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">{dt.alias}</div>
+        <div className="text-[11px]" style={{ color: "var(--dim)" }}>
+          {dt.picks_count > 0
+            ? `Equipo armado · ${dt.picks_count} jugadores`
+            : "Sin equipo armado"}
+        </div>
+      </div>
+      <span className="bebas text-xl" style={{ color: "var(--gold)" }}>
+        {dt.points}
       </span>
     </div>
   );
