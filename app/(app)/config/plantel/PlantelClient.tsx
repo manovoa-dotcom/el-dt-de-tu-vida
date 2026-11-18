@@ -12,6 +12,7 @@ import {
   darDeBaja,
   vincularSolicitudConHistorial,
   agregarInvitado,
+  renombrarInvitado,
   type ActionResult,
 } from "./actions";
 
@@ -193,16 +194,23 @@ export default function PlantelClient({ miembros }: { miembros: Miembro[] }) {
       {invitados.length > 0 && (
         <Seccion titulo={`🎫 Invitados (${invitados.length})`} abierta={false}>
           {invitados.map((m) => (
-            <FilaMiembro key={m.id} m={m}>
-              <BotonMini
-                onClick={() =>
-                  ejecutar(() => darDeBaja(m.id), () => router.refresh())
-                }
-                disabled={isPending}
-                color="var(--red)"
-                texto="Archivar"
-              />
-            </FilaMiembro>
+            <FilaInvitado
+              key={m.id}
+              m={m}
+              pending={isPending}
+              onGuardar={(alias, onOk) =>
+                ejecutar(
+                  () => renombrarInvitado(m.id, alias),
+                  () => {
+                    onOk();
+                    router.refresh();
+                  }
+                )
+              }
+              onArchivar={() =>
+                ejecutar(() => darDeBaja(m.id), () => router.refresh())
+              }
+            />
           ))}
         </Seccion>
       )}
@@ -372,6 +380,79 @@ function FilaMiembro({
       </div>
       <div className="flex flex-none items-center gap-2">{children}</div>
     </div>
+  );
+}
+
+function FilaInvitado({
+  m,
+  pending,
+  onGuardar,
+  onArchivar,
+}: {
+  m: Miembro;
+  pending: boolean;
+  onGuardar: (alias: string, onOk: () => void) => void;
+  onArchivar: () => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [alias, setAlias] = useState(m.display_name);
+
+  function guardar(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onGuardar(alias, () => {
+      setAlias(alias.trim());
+      setEditando(false);
+    });
+  }
+
+  return (
+    <>
+      <FilaMiembro m={m}>
+        <BotonMini
+          onClick={() => {
+            setAlias(m.display_name);
+            setEditando((actual) => !actual);
+          }}
+          disabled={pending}
+          color="var(--gold)"
+          texto={editando ? "Cancelar" : "Editar"}
+        />
+        <BotonMini
+          onClick={onArchivar}
+          disabled={pending}
+          color="var(--red)"
+          texto="Archivar"
+        />
+      </FilaMiembro>
+      {editando && (
+        <form onSubmit={guardar} className="flex gap-2 px-4 pb-3">
+          <input
+            type="text"
+            value={alias}
+            onChange={(event) => setAlias(event.target.value)}
+            maxLength={30}
+            autoCorrect="off"
+            autoCapitalize="off"
+            aria-label={`Nuevo alias para ${m.display_name}`}
+            disabled={pending}
+            className="min-w-0 flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "var(--tx)",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={pending || alias.trim().length < 2}
+            className="rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-50"
+            style={{ background: "var(--or)", color: "#fff" }}
+          >
+            Guardar
+          </button>
+        </form>
+      )}
+    </>
   );
 }
 

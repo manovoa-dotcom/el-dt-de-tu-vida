@@ -243,6 +243,85 @@ export async function agregarInvitado(
   return { ok: true, message: `Invitado "${alias}" agregado` };
 }
 
+export async function renombrarInvitado(
+  memberId: string,
+  nuevoAlias: string
+): Promise<ActionResult> {
+  const { supabase, groupId, error } = await requireAdmin();
+  if (error) return { ok: false, error };
+
+  const alias = nuevoAlias.trim();
+  if (alias.length < 2) {
+    return { ok: false, error: "El alias debe tener al menos 2 caracteres" };
+  }
+  if (alias.length > 30) {
+    return { ok: false, error: "El alias no puede superar los 30 caracteres" };
+  }
+
+  const { data: invitado, error: errorInvitado } = await supabase
+    .from("group_members")
+    .select("id")
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .eq("status", "invitado")
+    .is("user_id", null)
+    .maybeSingle();
+
+  if (errorInvitado) {
+    console.error("Error verificando invitado:", errorInvitado);
+    return { ok: false, error: "No se pudo verificar el invitado" };
+  }
+  if (!invitado) {
+    return { ok: false, error: "El invitado ya no existe o no se puede editar" };
+  }
+
+  const { data: miembros, error: errorMiembros } = await supabase
+    .from("group_members")
+    .select("id, display_name")
+    .eq("group_id", groupId)
+    .neq("id", memberId)
+    .neq("status", "baja");
+
+  if (errorMiembros) {
+    console.error("Error verificando alias de invitado:", errorMiembros);
+    return { ok: false, error: "No se pudo verificar si el alias está disponible" };
+  }
+
+  const aliasNormalizado = alias.toLowerCase();
+  const aliasEnUso = (miembros ?? []).some(
+    (miembro) => miembro.display_name.trim().toLowerCase() === aliasNormalizado
+  );
+  if (aliasEnUso) {
+    return { ok: false, error: "Ya existe alguien con ese alias en el grupo" };
+  }
+
+  const { data: actualizado, error: errorActualizar } = await supabase
+    .from("group_members")
+    .update({ display_name: alias })
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .eq("status", "invitado")
+    .is("user_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (errorActualizar) {
+    console.error("Error renombrando invitado:", errorActualizar);
+    return { ok: false, error: "No se pudo cambiar el nombre del invitado" };
+  }
+  if (!actualizado) {
+    return { ok: false, error: "El invitado ya no existe o no se puede editar" };
+  }
+
+  revalidatePath("/config/plantel");
+  revalidatePath("/config");
+  revalidatePath("/convocatoria");
+  revalidatePath("/inicio");
+  revalidatePath("/resultados");
+  revalidatePath("/ranking");
+  return { ok: true, message: `Alias actualizado a "${alias}"` };
+}
+
 export async function vincularSolicitudConHistorial(
   memberId: string,
   pendingMemberId: string
