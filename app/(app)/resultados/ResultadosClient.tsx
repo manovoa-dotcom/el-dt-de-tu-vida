@@ -45,6 +45,7 @@ export default function ResultadosClient({
   }
 
   const podio = dts.slice(0, 3);
+  const idsPodio = new Set(podio.map((dt) => dt.member_id));
   const idsEquipoIdeal = new Set(equipoIdeal.map((j) => j.member_id));
 
   const fechaInfo = formatearFechaAR(partidoActual.kickoff_at);
@@ -253,6 +254,25 @@ export default function ResultadosClient({
         </>
       )}
 
+      {/* Todos los DT */}
+      <div className="bebas mt-6 px-4 text-xl tracking-wider">
+        DTS ({dts.length})
+      </div>
+      <div className="mt-1">
+        {dts.map((dt) => (
+          <FilaDT
+            key={dt.member_id}
+            dt={dt}
+            enPodio={idsPodio.has(dt.member_id)}
+          />
+        ))}
+        {dts.length === 0 && (
+          <p className="px-4 py-3 text-xs" style={{ color: "var(--dim)" }}>
+            No hay puntajes de DT registrados esta fecha.
+          </p>
+        )}
+      </div>
+
       {/* Todos los jugadores */}
       <div className="bebas mt-6 px-4 text-xl tracking-wider">
         JUGADORES ({jugadores.length})
@@ -268,21 +288,6 @@ export default function ResultadosClient({
         {jugadores.length === 0 && (
           <p className="px-4 py-3 text-xs" style={{ color: "var(--dim)" }}>
             Nadie sumó puntos esta fecha.
-          </p>
-        )}
-      </div>
-
-      {/* Todos los DT */}
-      <div className="bebas mt-6 px-4 text-xl tracking-wider">
-        DTS ({dts.length})
-      </div>
-      <div className="mt-1">
-        {dts.map((dt) => (
-          <FilaDT key={dt.member_id} dt={dt} />
-        ))}
-        {dts.length === 0 && (
-          <p className="px-4 py-3 text-xs" style={{ color: "var(--dim)" }}>
-            No hay puntajes de DT registrados esta fecha.
           </p>
         )}
       </div>
@@ -377,11 +382,20 @@ function FilaJugador({
   );
 }
 
-function FilaDT({ dt }: { dt: DTResultado }) {
+function FilaDT({
+  dt,
+  enPodio,
+}: {
+  dt: DTResultado;
+  enPodio: boolean;
+}) {
   return (
     <div
       className="flex items-center gap-3 px-4 py-2"
-      style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+      style={{
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        background: enPodio ? "rgba(242,182,50,0.08)" : undefined,
+      }}
     >
       <Avatar alias={dt.alias} photoUrl={dt.photo_url} size={36} />
       <div className="min-w-0 flex-1">
@@ -392,7 +406,10 @@ function FilaDT({ dt }: { dt: DTResultado }) {
             : "Sin equipo armado"}
         </div>
       </div>
-      <span className="bebas text-xl" style={{ color: "var(--gold)" }}>
+      <span
+        className="bebas text-xl"
+        style={{ color: enPodio ? "var(--gold)" : "var(--tx)" }}
+      >
         {dt.points}
       </span>
     </div>
