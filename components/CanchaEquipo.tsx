@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Carta from "./Carta";
 import CartaDT, { type ItemCartaDT } from "./CartaDT";
 
@@ -12,6 +13,12 @@ export type JugadorCancha = {
   items?: ItemCartaDT[];
   posicion?: number | null;
   estrellas?: number;
+};
+
+type CartaSeleccionada = {
+  jugador: JugadorCancha;
+  puntos: number;
+  sinMedalla: boolean;
 };
 
 const POSICIONES: Record<number, [number, number][]> = {
@@ -118,12 +125,23 @@ export default function CanchaEquipo({
   fecha,
   fechaTexto,
 }: Props) {
+  const [esMovil, setEsMovil] = useState(false);
+  const [cartaSeleccionada, setCartaSeleccionada] =
+    useState<CartaSeleccionada | null>(null);
   const n = titulares.length;
   const usaCartaDT = cartasEquipoIdeal || cartasEquipoDT;
   const posiciones =
     usaCartaDT && n === 5
       ? POSICIONES_CARTAS_5
       : POSICIONES[n] ?? generarPosiciones(n);
+
+  useEffect(() => {
+    const consulta = window.matchMedia("(max-width: 767px)");
+    const actualizar = () => setEsMovil(consulta.matches);
+    actualizar();
+    consulta.addEventListener("change", actualizar);
+    return () => consulta.removeEventListener("change", actualizar);
+  }, []);
 
   return (
     <div style={{ maxWidth, margin: "0 auto" }}>
@@ -207,6 +225,16 @@ export default function CanchaEquipo({
                   items={j.items}
                   medallaEquipoIdeal={cartasEquipoIdeal}
                   sinMedalla={cartasEquipoDT}
+                  onClick={
+                    esMovil
+                      ? () =>
+                          setCartaSeleccionada({
+                            jugador: j,
+                            puntos: j.points,
+                            sinMedalla: cartasEquipoDT,
+                          })
+                      : undefined
+                  }
                 />
               ) : (
                 <Carta
@@ -260,6 +288,18 @@ export default function CanchaEquipo({
                 suplente={null}
                 items={suplente.items}
                 sinMedalla
+                onClick={
+                  esMovil
+                    ? () =>
+                        setCartaSeleccionada({
+                          jugador: suplente,
+                          puntos: suplentePuntosMitad
+                            ? suplente.points / 2
+                            : suplente.points,
+                          sinMedalla: true,
+                        })
+                    : undefined
+                }
               />
             </div>
           ) : (
@@ -276,7 +316,93 @@ export default function CanchaEquipo({
           )}
         </div>
       )}
+      {usaCartaDT && (
+        <p
+          className="mt-1 text-center text-[10px] md:hidden"
+          style={{ color: "var(--dim)" }}
+        >
+          Tocá una carta para verla ampliada
+        </p>
+      )}
+      {esMovil && cartaSeleccionada && (
+        <CartaDTModal
+          jugador={cartaSeleccionada.jugador}
+          puntos={cartaSeleccionada.puntos}
+          fecha={fecha ?? 0}
+          fechaTexto={fechaTexto ?? ""}
+          medallaEquipoIdeal={cartasEquipoIdeal}
+          sinMedalla={cartaSeleccionada.sinMedalla}
+          onCerrar={() => setCartaSeleccionada(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function CartaDTModal({
+  jugador,
+  puntos,
+  fecha,
+  fechaTexto,
+  medallaEquipoIdeal,
+  sinMedalla,
+  onCerrar,
+}: {
+  jugador: JugadorCancha;
+  puntos: number;
+  fecha: number;
+  fechaTexto: string;
+  medallaEquipoIdeal: boolean;
+  sinMedalla: boolean;
+  onCerrar: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="carta-dt-modal"
+      aria-label={`Carta ampliada de ${jugador.alias}`}
+      onClose={onCerrar}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onCerrar();
+      }}
+    >
+      <div className="relative">
+        <button
+          type="button"
+          autoFocus
+          onClick={onCerrar}
+          aria-label="Cerrar carta ampliada"
+          className="absolute -right-2 -top-3 z-20 grid h-10 w-10 place-items-center rounded-full border border-white/30 bg-[#0a2818] text-2xl text-white shadow-lg"
+        >
+          ×
+        </button>
+        <CartaDT
+          nombre={jugador.real_name ?? ""}
+          alias={jugador.alias}
+          photoUrl={jugador.photo_url}
+          puntos={puntos}
+          posicion={1}
+          fecha={fecha}
+          fechaTexto={fechaTexto}
+          titulares={[]}
+          suplente={null}
+          items={jugador.items}
+          medallaEquipoIdeal={medallaEquipoIdeal}
+          sinMedalla={sinMedalla}
+        />
+      </div>
+    </dialog>
   );
 }
 

@@ -155,6 +155,20 @@ body {
   }
 }
 
+  .carta-dt-modal {
+    width: min(82vw, 360px, 52dvh);
+    max-width: none;
+    max-height: 92dvh;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .carta-dt-modal::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+  }
+
 .carta-dt {
   position: relative;
   display: block;
