@@ -11,6 +11,7 @@ export type JugadorCancha = {
   points: number;
   real_name?: string;
   items?: ItemCartaDT[];
+  integranteEquipoIdeal?: boolean;
   posicion?: number | null;
   estrellas?: number;
 };
@@ -18,6 +19,7 @@ export type JugadorCancha = {
 type CartaSeleccionada = {
   jugador: JugadorCancha;
   puntos: number;
+  medallaEquipoIdeal: boolean;
   sinMedalla: boolean;
 };
 
@@ -200,6 +202,9 @@ export default function CanchaEquipo({
         {/* Jugadores */}
         {titulares.map((j, idx) => {
           const [x, y] = posiciones[idx] ?? [50, 50];
+          const medallaEquipoIdeal =
+            cartasEquipoIdeal || j.integranteEquipoIdeal === true;
+          const sinMedalla = cartasEquipoDT && !medallaEquipoIdeal;
           return (
             <div
               key={j.member_id}
@@ -223,15 +228,16 @@ export default function CanchaEquipo({
                   titulares={[]}
                   suplente={null}
                   items={j.items}
-                  medallaEquipoIdeal={cartasEquipoIdeal}
-                  sinMedalla={cartasEquipoDT}
+                  medallaEquipoIdeal={medallaEquipoIdeal}
+                  sinMedalla={sinMedalla}
                   onClick={
                     esMovil
                       ? () =>
                           setCartaSeleccionada({
                             jugador: j,
                             puntos: j.points,
-                            sinMedalla: cartasEquipoDT,
+                            medallaEquipoIdeal,
+                            sinMedalla,
                           })
                       : undefined
                   }
@@ -287,7 +293,14 @@ export default function CanchaEquipo({
                 titulares={[]}
                 suplente={null}
                 items={suplente.items}
-                sinMedalla
+                medallaEquipoIdeal={
+                  cartasEquipoIdeal ||
+                  suplente.integranteEquipoIdeal === true
+                }
+                sinMedalla={
+                  cartasEquipoDT &&
+                  suplente.integranteEquipoIdeal !== true
+                }
                 onClick={
                   esMovil
                     ? () =>
@@ -296,7 +309,12 @@ export default function CanchaEquipo({
                           puntos: suplentePuntosMitad
                             ? suplente.points / 2
                             : suplente.points,
-                          sinMedalla: true,
+                        medallaEquipoIdeal:
+                          cartasEquipoIdeal ||
+                          suplente.integranteEquipoIdeal === true,
+                        sinMedalla:
+                          cartasEquipoDT &&
+                          suplente.integranteEquipoIdeal !== true,
                         })
                     : undefined
                 }
@@ -330,7 +348,7 @@ export default function CanchaEquipo({
           puntos={cartaSeleccionada.puntos}
           fecha={fecha ?? 0}
           fechaTexto={fechaTexto ?? ""}
-          medallaEquipoIdeal={cartasEquipoIdeal}
+          medallaEquipoIdeal={cartaSeleccionada.medallaEquipoIdeal}
           sinMedalla={cartaSeleccionada.sinMedalla}
           onCerrar={() => setCartaSeleccionada(null)}
         />

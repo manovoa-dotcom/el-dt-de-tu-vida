@@ -46,7 +46,6 @@ export default function ResultadosClient({
   }
 
   const podio = dts.slice(0, 3);
-  const idsPodio = new Set(podio.map((dt) => dt.member_id));
   const idsEquipoIdeal = new Set(equipoIdeal.map((j) => j.member_id));
 
   const fechaInfo = formatearFechaAR(partidoActual.kickoff_at);
@@ -205,8 +204,22 @@ export default function ResultadosClient({
           {dtSeleccionado.picks_count > 0 ? (
             <div className="mt-3 -mx-4">
               <CanchaEquipo
-                titulares={dtSeleccionado.equipo.titulares}
-                suplente={dtSeleccionado.equipo.suplente}
+                titulares={dtSeleccionado.equipo.titulares.map((jugador) => ({
+                  ...jugador,
+                  integranteEquipoIdeal: idsEquipoIdeal.has(
+                    jugador.member_id
+                  ),
+                }))}
+                suplente={
+                  dtSeleccionado.equipo.suplente
+                    ? {
+                        ...dtSeleccionado.equipo.suplente,
+                        integranteEquipoIdeal: idsEquipoIdeal.has(
+                          dtSeleccionado.equipo.suplente.member_id
+                        ),
+                      }
+                    : null
+                }
                 suplentePuntosMitad
                 cartasEquipoDT
                 maxWidth="100%"
@@ -265,13 +278,17 @@ export default function ResultadosClient({
         DTS ({dts.length})
       </div>
       <div className="mt-1">
-        {dts.map((dt) => (
-          <FilaDT
-            key={dt.member_id}
-            dt={dt}
-            enPodio={idsPodio.has(dt.member_id)}
-          />
-        ))}
+        {dts.map((dt, index) => {
+          const posicion =
+            index === 0 ? 1 : index === 1 ? 2 : index === 2 ? 3 : null;
+          return (
+            <FilaDT
+              key={dt.member_id}
+              dt={dt}
+              posicion={posicion}
+            />
+          );
+        })}
         {dts.length === 0 && (
           <p className="px-4 py-3 text-xs" style={{ color: "var(--dim)" }}>
             No hay puntajes de DT registrados esta fecha.
@@ -367,17 +384,17 @@ function FilaJugador({
       }}
     >
       <Avatar alias={j.alias} photoUrl={j.photo_url} size={36} />
+      {enIdeal && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/cards/medalla-equipo-ideal.png"
+          alt="Integró el Equipo Ideal"
+          className="h-[22px] w-[14px] shrink-0 object-contain"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-semibold">{j.alias}</span>
-          {enIdeal && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/cards/medalla-equipo-ideal.png"
-              alt="Integró el Equipo Ideal"
-              className="h-[22px] w-[14px] object-contain"
-            />
-          )}
           {j.is_invitado && (
             <span
               className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
@@ -416,11 +433,15 @@ function FilaJugador({
 
 function FilaDT({
   dt,
-  enPodio,
+  posicion,
 }: {
   dt: DTResultado;
-  enPodio: boolean;
+  posicion: 1 | 2 | 3 | null;
 }) {
+  const enPodio = posicion !== null;
+  const nombreMedalla =
+    posicion === 1 ? "oro" : posicion === 2 ? "plata" : posicion === 3 ? "bronce" : null;
+
   return (
     <div
       className="flex items-center gap-3 px-4 py-2"
@@ -430,6 +451,14 @@ function FilaDT({
       }}
     >
       <Avatar alias={dt.alias} photoUrl={dt.photo_url} size={36} />
+      {nombreMedalla && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/cards/medalla-${nombreMedalla}.png`}
+          alt={`Medalla de ${nombreMedalla}`}
+          className="h-6 w-4 shrink-0 object-contain"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{dt.alias}</div>
         <div className="text-[11px]" style={{ color: "var(--dim)" }}>
