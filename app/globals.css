@@ -123,7 +123,7 @@ body {
 }
 
 .podio-dt-card {
-  flex: 0 0 min(70vw, 300px);
+  flex: 0 0 min(64vw, 280px);
   min-width: 0;
   scroll-snap-align: center;
 }
@@ -155,19 +155,26 @@ body {
   }
 }
 
-  .carta-dt-modal {
-    width: min(82vw, 360px, 52dvh);
-    max-width: none;
-    max-height: 92dvh;
-    overflow: visible;
-    padding: 0;
-    border: 0;
-    background: transparent;
-  }
+.carta-dt-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(82vw, 360px, 52dvh);
+  max-width: none;
+  max-height: 92dvh;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 
-  .carta-dt-modal::backdrop {
-    background: rgba(0, 0, 0, 0.72);
-  }
+.carta-dt-modal::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
 
 .carta-dt {
   position: relative;
