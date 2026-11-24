@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Avatar from "@/components/Avatar";
-import Carta from "@/components/Carta";
+import CartaDT from "@/components/CartaDT";
 import CanchaEquipo from "@/components/CanchaEquipo";
 import {
   formatearFechaAR,
@@ -11,6 +11,7 @@ import {
   DIAS_SEMANA,
   MESES_CORTOS,
 } from "@/lib/fecha";
+import { formatearPuntos } from "@/lib/puntaje-dt";
 import type {
   DTResultado,
   JugadorResultado,
@@ -50,6 +51,9 @@ export default function ResultadosClient({
 
   const fechaInfo = formatearFechaAR(partidoActual.kickoff_at);
   const hora = formatearHoraAR(partidoActual.kickoff_at);
+  const fechaTexto = `${String(fechaInfo.dia).padStart(2, "0")}/${String(
+    fechaInfo.mes + 1
+  ).padStart(2, "0")}/${fechaInfo.anio}`;
 
   return (
     <div>
@@ -142,6 +146,8 @@ export default function ResultadosClient({
               <PodioDT
                 dt={podio[0]}
                 posicion={1}
+                fecha={partidoActual.number}
+                fechaTexto={fechaTexto}
                 onClick={() => setDtSeleccionado(podio[0])}
               />
             )}
@@ -150,11 +156,15 @@ export default function ResultadosClient({
                 <PodioDT
                   dt={podio[1]}
                   posicion={2}
+                  fecha={partidoActual.number}
+                  fechaTexto={fechaTexto}
                   onClick={() => setDtSeleccionado(podio[1])}
                 />
                 <PodioDT
                   dt={podio[0]}
                   posicion={1}
+                  fecha={partidoActual.number}
+                  fechaTexto={fechaTexto}
                   onClick={() => setDtSeleccionado(podio[0])}
                 />
               </>
@@ -164,16 +174,22 @@ export default function ResultadosClient({
                 <PodioDT
                   dt={podio[1]}
                   posicion={2}
+                  fecha={partidoActual.number}
+                  fechaTexto={fechaTexto}
                   onClick={() => setDtSeleccionado(podio[1])}
                 />
                 <PodioDT
                   dt={podio[0]}
                   posicion={1}
+                  fecha={partidoActual.number}
+                  fechaTexto={fechaTexto}
                   onClick={() => setDtSeleccionado(podio[0])}
                 />
                 <PodioDT
                   dt={podio[2]}
                   posicion={3}
+                  fecha={partidoActual.number}
+                  fechaTexto={fechaTexto}
                   onClick={() => setDtSeleccionado(podio[2])}
                 />
               </>
@@ -188,7 +204,7 @@ export default function ResultadosClient({
       {dtSeleccionado && (
         <section
           aria-labelledby="equipo-dt-titulo"
-          className="mx-3 mt-4 rounded-2xl p-4"
+          className="mx-1 mt-4 rounded-2xl p-4"
           style={{
             background: "var(--g1)",
             border: "1px solid rgba(255,255,255,0.12)",
@@ -200,7 +216,8 @@ export default function ResultadosClient({
                 EQUIPO DE {dtSeleccionado.alias}
               </h2>
               <p className="text-xs" style={{ color: "var(--dim)" }}>
-                Fecha {partidoActual.number} · {dtSeleccionado.points} puntos
+                Fecha {partidoActual.number} ·{" "}
+                {formatearPuntos(dtSeleccionado.points)} puntos
               </p>
             </div>
             <button
@@ -215,10 +232,15 @@ export default function ResultadosClient({
           </div>
 
           {dtSeleccionado.picks_count > 0 ? (
-            <div className="mt-3">
+            <div className="mt-3 -mx-4">
               <CanchaEquipo
                 titulares={dtSeleccionado.equipo.titulares}
                 suplente={dtSeleccionado.equipo.suplente}
+                suplentePuntosMitad
+                cartasEquipoDT
+                maxWidth="100%"
+                fecha={partidoActual.number}
+                fechaTexto={fechaTexto}
               />
             </div>
           ) : (
@@ -241,14 +263,20 @@ export default function ResultadosClient({
           <p className="px-4 text-[11px]" style={{ color: "var(--dim)" }}>
             Los {equipoIdeal.length} mejores de la fecha
           </p>
-          <div className="mx-auto mt-3 px-3">
+          <div className="mx-auto mt-3 px-1">
             <CanchaEquipo
               titulares={equipoIdeal.map((j) => ({
                 member_id: j.member_id,
                 alias: j.alias,
+                real_name: j.real_name,
                 photo_url: j.photo_url,
                 points: j.points,
+                items: j.items,
               }))}
+              cartasEquipoIdeal
+              maxWidth="100%"
+              fecha={partidoActual.number}
+              fechaTexto={fechaTexto}
             />
           </div>
         </>
@@ -301,22 +329,40 @@ export default function ResultadosClient({
 function PodioDT({
   dt,
   posicion,
+  fecha,
+  fechaTexto,
   onClick,
 }: {
   dt: DTResultado;
   posicion: 1 | 2 | 3;
+  fecha: number;
+  fechaTexto: string;
   onClick: () => void;
 }) {
-  const medalla = posicion === 1 ? "🥇" : posicion === 2 ? "🥈" : "🥉";
+  const normalizedAlias = dt.alias
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  const illustrationUrl =
+    normalizedAlias === "el rustico" ||
+    normalizedAlias === "mariano el rustico"
+      ? "/dt-avatars/mariano-el-rustico.png"
+      : null;
+
   return (
-    <div className="flex flex-col items-center" style={{ flex: 1 }}>
-      <div className="mb-1 text-2xl">{medalla}</div>
-      <Carta
+    <div className="min-w-0" style={{ flex: 1 }}>
+      <CartaDT
+        nombre={dt.real_name}
         alias={dt.alias}
         photoUrl={dt.photo_url}
         puntos={dt.points}
         posicion={posicion}
-        size="sm"
+        fecha={fecha}
+        fechaTexto={fechaTexto}
+        titulares={dt.equipo.titulares}
+        suplente={dt.equipo.suplente}
+        illustrationUrl={illustrationUrl}
         onClick={onClick}
       />
     </div>
@@ -345,7 +391,14 @@ function FilaJugador({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-semibold">{j.alias}</span>
-          {enIdeal && <span className="text-[10px]">⭐</span>}
+          {enIdeal && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/cards/medalla-equipo-ideal.png"
+              alt="Integró el Equipo Ideal"
+              className="h-[22px] w-[14px] object-contain"
+            />
+          )}
           {j.is_invitado && (
             <span
               className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
@@ -410,7 +463,7 @@ function FilaDT({
         className="bebas text-xl"
         style={{ color: enPodio ? "var(--gold)" : "var(--tx)" }}
       >
-        {dt.points}
+        {formatearPuntos(dt.points)}
       </span>
     </div>
   );

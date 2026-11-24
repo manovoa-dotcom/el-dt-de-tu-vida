@@ -127,7 +127,10 @@ export default function ResultadosClient({
     startTransition(async () => {
       const res: ActionResult = await guardarResultados(matchId, wins, faltas);
       if (res.ok) {
-        setToast({ texto: "¡Resultados guardados!", tipo: "ok" });
+        setToast({
+          texto: res.message ?? "¡Resultados guardados!",
+          tipo: "ok",
+        });
         setTimeout(() => {
           router.push("/inicio");
           router.refresh();

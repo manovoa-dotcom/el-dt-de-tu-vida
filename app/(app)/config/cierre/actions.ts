@@ -1,5 +1,6 @@
 "use server";
 import { getCurrentGroupMembership } from "@/lib/group-context";
+import { calcularPuntajeDT } from "@/lib/puntaje-dt";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -98,18 +99,110 @@ export async function cerrarTemporada(): Promise<ActionResult> {
   const fechasJugadas = partidosIds.length;
 
   // ─── Podio DT ───
-  let dtScores: { dt_member_id: string; points: number }[] = [];
+  let dtScores: {
+    dt_member_id: string;
+    match_id: string;
+    points: number;
+  }[] = [];
+  let fantasyTeams: { id: string; match_id: string; dt_member_id: string }[] =
+    [];
+  let fantasyPicks: {
+    team_id: string;
+    member_id: string;
+    slot: string;
+  }[] = [];
+  let playerScores: { member_id: string; match_id: string; points: number }[] =
+    [];
   if (partidosIds.length > 0) {
-    const { data } = await supabase
-      .from("dt_scores")
-      .select("dt_member_id, points")
-      .in("match_id", partidosIds);
-    dtScores = data ?? [];
+    const [dtResult, teamResult, playerResult] = await Promise.all([
+      supabase
+        .from("dt_scores")
+        .select("dt_member_id, match_id, points")
+        .in("match_id", partidosIds),
+      supabase
+        .from("fantasy_teams")
+        .select("id, match_id, dt_member_id")
+        .in("match_id", partidosIds),
+      supabase
+        .from("player_scores")
+        .select("member_id, match_id, points")
+        .in("match_id", partidosIds),
+    ]);
+    if (dtResult.error || teamResult.error || playerResult.error) {
+      console.error("Error fetching DT score inputs:", {
+        dtScores: dtResult.error,
+        fantasyTeams: teamResult.error,
+        playerScores: playerResult.error,
+      });
+      return {
+        ok: false,
+        error: "No se pudieron calcular los puntajes de DT de la temporada",
+      };
+    }
+    dtScores = dtResult.data ?? [];
+    fantasyTeams = teamResult.data ?? [];
+    playerScores = playerResult.data ?? [];
+
+    if (fantasyTeams.length > 0) {
+      const { data, error } = await supabase
+        .from("fantasy_picks")
+        .select("team_id, member_id, slot")
+        .in(
+          "team_id",
+          fantasyTeams.map((team) => team.id)
+        );
+      if (error) {
+        console.error("Error fetching fantasy_picks:", error);
+        return {
+          ok: false,
+          error: "No se pudieron calcular los puntajes de DT de la temporada",
+        };
+      }
+      fantasyPicks = data ?? [];
+    }
+  }
+
+  const scoresPorFechaJugador = new Map(
+    playerScores.map((score) => [
+      `${score.match_id}:${score.member_id}`,
+      score.points,
+    ])
+  );
+  const picksPorTeam = new Map<
+    string,
+    { member_id: string; slot: string }[]
+  >();
+  for (const pick of fantasyPicks) {
+    if (!picksPorTeam.has(pick.team_id)) picksPorTeam.set(pick.team_id, []);
+    picksPorTeam.get(pick.team_id)!.push(pick);
   }
 
   const dtTotales = new Map<string, number>();
-  for (const s of dtScores) {
-    dtTotales.set(s.dt_member_id, (dtTotales.get(s.dt_member_id) ?? 0) + s.points);
+  const dtsCalculados = new Set<string>();
+  for (const team of fantasyTeams) {
+    const points = calcularPuntajeDT(
+      (picksPorTeam.get(team.id) ?? []).map((pick) => ({
+        slot: pick.slot,
+        points:
+          scoresPorFechaJugador.get(
+            `${team.match_id}:${pick.member_id}`
+          ) ?? 0,
+      }))
+    );
+    const clave = `${team.match_id}:${team.dt_member_id}`;
+    dtsCalculados.add(clave);
+    dtTotales.set(
+      team.dt_member_id,
+      (dtTotales.get(team.dt_member_id) ?? 0) + points
+    );
+  }
+
+  for (const score of dtScores) {
+    if (dtsCalculados.has(`${score.match_id}:${score.dt_member_id}`)) continue;
+    dtTotales.set(
+      score.dt_member_id,
+      (dtTotales.get(score.dt_member_id) ?? 0) + score.points
+    );
   }
 
   const { data: miembros } = await supabase

@@ -1,5 +1,6 @@
 import { getCurrentGroupMembership } from "@/lib/group-context";
 import { createClient } from "@/lib/supabase/server";
+import { calcularPuntajeDT } from "@/lib/puntaje-dt";
 import { redirect } from "next/navigation";
 import ResultadosClient from "./ResultadosClient";
 
@@ -11,6 +12,7 @@ export type ItemGanado = {
 export type JugadorResultado = {
   member_id: string;
   alias: string;
+  real_name: string;
   photo_url: string | null;
   is_invitado: boolean;
   points: number;
@@ -19,11 +21,12 @@ export type JugadorResultado = {
 
 export type JugadorEquipoDT = Pick<
   JugadorResultado,
-  "member_id" | "alias" | "photo_url" | "points"
+  "member_id" | "alias" | "real_name" | "photo_url" | "points" | "items"
 >;
 
 export type DTResultado = {
   member_id: string;
+  real_name: string;
   alias: string;
   photo_url: string | null;
   points: number;
@@ -212,14 +215,20 @@ export default async function ResultadosPage({
     .map((m) => m.user_id)
     .filter((x): x is string => !!x);
 
-  let perfiles: Record<string, { photo_url: string | null }> = {};
+  let perfiles: Record<
+    string,
+    { real_name: string | null; photo_url: string | null }
+  > = {};
   if (userIds.length > 0) {
     const { data: profs } = await supabase
       .from("profiles")
-      .select("id, photo_url")
+      .select("id, real_name, photo_url")
       .in("id", userIds);
     perfiles = Object.fromEntries(
-      (profs ?? []).map((p) => [p.id, { photo_url: p.photo_url }])
+      (profs ?? []).map((p) => [
+        p.id,
+        { real_name: p.real_name, photo_url: p.photo_url },
+      ])
     );
   }
 
@@ -228,6 +237,8 @@ export default async function ResultadosPage({
       m.id,
       {
         alias: m.display_name,
+        real_name:
+          m.user_id ? perfiles[m.user_id]?.real_name ?? "" : "",
         is_invitado: m.status === "invitado",
         photo_url: m.user_id ? perfiles[m.user_id]?.photo_url ?? null : null,
       },
@@ -241,6 +252,7 @@ export default async function ResultadosPage({
       return {
         member_id: a.member_id,
         alias: m?.alias ?? "—",
+        real_name: m?.real_name.trim() ?? "",
         photo_url: m?.photo_url ?? null,
         is_invitado: m?.is_invitado ?? false,
         points: scoresMap.get(a.member_id) ?? 0,
@@ -270,21 +282,33 @@ export default async function ResultadosPage({
     return {
       member_id: memberId,
       alias: miembro?.alias ?? "—",
+      real_name: miembro?.real_name.trim() ?? "",
       photo_url: miembro?.photo_url ?? null,
       points: scoresMap.get(memberId) ?? 0,
+      items: itemsPorJugador.get(memberId) ?? [],
     };
   };
 
   const dts: DTResultado[] = (dtScoresRaw ?? []).map((d) => {
     const m = miembrosMap.get(d.dt_member_id);
+    const nombreReal = m?.real_name ?? "";
     const team = teamPorDT.get(d.dt_member_id);
     const picks = team ? picksPorTeam.get(team.id) ?? [] : [];
+    const points = team
+      ? calcularPuntajeDT(
+          picks.map((pick) => ({
+            slot: pick.slot,
+            points: scoresMap.get(pick.member_id) ?? 0,
+          }))
+        )
+      : d.points;
     const suplentePick = picks.find((pick) => pick.slot === "suplente");
     return {
       member_id: d.dt_member_id,
+      real_name: nombreReal.trim(),
       alias: m?.alias ?? "—",
       photo_url: m?.photo_url ?? null,
-      points: d.points,
+      points,
       picks_count: picks.length,
       equipo: {
         titulares: picks
@@ -295,7 +319,7 @@ export default async function ResultadosPage({
           : null,
       },
     };
-  });
+  }).sort((a, b) => b.points - a.points);
 
   // Equipo Ideal = top (cupo/2) jugadores
   const equipoIdealCount = Math.floor(partidoActual.cupo / 2);

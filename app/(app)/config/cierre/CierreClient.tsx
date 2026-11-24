@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { formatearPuntos } from "@/lib/puntaje-dt";
 import { cerrarTemporada, iniciarNuevaTemporada } from "./actions";
 
 type PremioItem = {
@@ -275,7 +276,7 @@ export default function CierreClient({
                       🏆 {campeon?.alias ?? "—"}
                     </div>
                     <div className="text-[11px]" style={{ color: "var(--dim)" }}>
-                      {t.name} · {campeon?.total_points ?? 0} pts
+                      {t.name} · {formatearPuntos(campeon?.total_points ?? 0)} pts
                     </div>
                   </div>
                 </div>
@@ -340,7 +341,7 @@ function ResumenCierreUI({
                     {p.alias}
                   </div>
                   <div className="bebas text-xl" style={{ color: "var(--gold)" }}>
-                    {p.total_points}
+                    {formatearPuntos(p.total_points)}
                   </div>
                 </div>
               );
@@ -373,7 +374,7 @@ function ResumenCierreUI({
                   <div className="text-sm font-bold">{r.equipo_ideal.dt.alias}</div>
                 </div>
                 <div className="bebas text-xl" style={{ color: "var(--gold)" }}>
-                  {r.equipo_ideal.dt.total_points}
+                  {formatearPuntos(r.equipo_ideal.dt.total_points)}
                 </div>
               </div>
             )}

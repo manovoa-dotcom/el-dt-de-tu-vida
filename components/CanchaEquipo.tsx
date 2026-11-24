@@ -1,12 +1,15 @@
 "use client";
 
 import Carta from "./Carta";
+import CartaDT, { type ItemCartaDT } from "./CartaDT";
 
 export type JugadorCancha = {
   member_id: string;
   alias: string;
   photo_url: string | null;
   points: number;
+  real_name?: string;
+  items?: ItemCartaDT[];
   posicion?: number | null;
   estrellas?: number;
 };
@@ -84,26 +87,48 @@ const POSICIONES: Record<number, [number, number][]> = {
   ],
 };
 
+const POSICIONES_CARTAS_5: [number, number][] = [
+  [33, 25],
+  [67, 25],
+  [17, 75],
+  [50, 75],
+  [83, 75],
+];
+
 type Props = {
   titulares: JugadorCancha[];
   suplente?: JugadorCancha | null;
-  maxWidth?: number;
+  suplentePuntosMitad?: boolean;
+  maxWidth?: number | string;
+  cartasEquipoIdeal?: boolean;
+  cartasEquipoDT?: boolean;
+  fecha?: number;
+  fechaTexto?: string;
 };
 
 export default function CanchaEquipo({
   titulares,
   suplente,
+  suplentePuntosMitad = false,
   maxWidth = 460,
+  cartasEquipoIdeal = false,
+  cartasEquipoDT = false,
+  fecha,
+  fechaTexto,
 }: Props) {
   const n = titulares.length;
-  const posiciones = POSICIONES[n] ?? generarPosiciones(n);
+  const usaCartaDT = cartasEquipoIdeal || cartasEquipoDT;
+  const posiciones =
+    usaCartaDT && n === 5
+      ? POSICIONES_CARTAS_5
+      : POSICIONES[n] ?? generarPosiciones(n);
 
   return (
     <div style={{ maxWidth, margin: "0 auto" }}>
       <div
         className="relative w-full overflow-hidden rounded-2xl"
         style={{
-          aspectRatio: "1 / 1",
+          aspectRatio: usaCartaDT ? "0.70 / 1" : "1 / 1",
           background:
             "repeating-linear-gradient(180deg, #1f6b3a 0 10%, #247a43 10% 20%)",
           border: "2px solid rgba(255,255,255,0.4)",
@@ -163,16 +188,38 @@ export default function CanchaEquipo({
                 left: `${x}%`,
                 top: `${y}%`,
                 transform: "translate(-50%, -50%)",
+                width: cartasEquipoIdeal
+                  ? "calc(33.333% - 10.67px)"
+                  : cartasEquipoDT
+                    ? "calc(33.333% - 10.67px)"
+                    : undefined,
               }}
             >
-              <Carta
-                alias={j.alias}
-                photoUrl={j.photo_url}
-                puntos={j.points}
-                posicion={j.posicion}
-                estrellas={j.estrellas ?? 0}
-                size="xs"
-              />
+              {usaCartaDT ? (
+                <CartaDT
+                  nombre={j.real_name ?? ""}
+                  alias={j.alias}
+                  photoUrl={j.photo_url}
+                  puntos={j.points}
+                  posicion={1}
+                  fecha={fecha ?? 0}
+                  fechaTexto={fechaTexto ?? ""}
+                  titulares={[]}
+                  suplente={null}
+                  items={j.items}
+                  medallaEquipoIdeal={cartasEquipoIdeal}
+                  sinMedalla={cartasEquipoDT}
+                />
+              ) : (
+                <Carta
+                  alias={j.alias}
+                  photoUrl={j.photo_url}
+                  puntos={j.points}
+                  posicion={j.posicion}
+                  estrellas={j.estrellas ?? 0}
+                  size="xs"
+                />
+              )}
             </div>
           );
         })}
@@ -180,7 +227,9 @@ export default function CanchaEquipo({
 
       {suplente && (
         <div
-          className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2"
+          className={`mt-2 flex ${
+            cartasEquipoDT ? "flex-col items-center" : "items-center"
+          } gap-3 rounded-xl px-3 py-2`}
           style={{
             background: "#0a2818",
             border: "1.5px solid rgba(242,182,50,0.3)",
@@ -190,16 +239,42 @@ export default function CanchaEquipo({
             className="bebas text-[10px] tracking-wider"
             style={{ color: "var(--gold)" }}
           >
-            SUPLENTE
+            {suplentePuntosMitad
+              ? "SUPLENTE · MITAD DE PUNTOS"
+              : "SUPLENTE"}
           </div>
-          <Carta
-            alias={suplente.alias}
-            photoUrl={suplente.photo_url}
-            puntos={suplente.points}
-            posicion={suplente.posicion}
-            estrellas={suplente.estrellas ?? 0}
-            size="xs"
-          />
+          {cartasEquipoDT ? (
+            <div style={{ width: "calc(33.333% - 10.67px)" }}>
+              <CartaDT
+                nombre={suplente.real_name ?? ""}
+                alias={suplente.alias}
+                photoUrl={suplente.photo_url}
+                puntos={
+                  suplentePuntosMitad
+                    ? suplente.points / 2
+                    : suplente.points
+                }
+                posicion={1}
+                fecha={fecha ?? 0}
+                fechaTexto={fechaTexto ?? ""}
+                titulares={[]}
+                suplente={null}
+                items={suplente.items}
+                sinMedalla
+              />
+            </div>
+          ) : (
+            <Carta
+              alias={suplente.alias}
+              photoUrl={suplente.photo_url}
+              puntos={
+                suplentePuntosMitad ? suplente.points / 2 : suplente.points
+              }
+              posicion={suplente.posicion}
+              estrellas={suplente.estrellas ?? 0}
+              size="xs"
+            />
+          )}
         </div>
       )}
     </div>

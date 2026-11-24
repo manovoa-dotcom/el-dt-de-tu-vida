@@ -1,4 +1,5 @@
 import { getCurrentGroupMembership } from "@/lib/group-context";
+import { calcularPuntajeDT } from "@/lib/puntaje-dt";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import RankingClient from "./RankingClient";
@@ -268,22 +269,6 @@ export default async function RankingPage() {
     }
   }
 
-  // ─── Estrellas DT: cuántas veces fue DT de la fecha ───
-  const maxPointsPorFecha = new Map<string, number>();
-  for (const s of dtScores) {
-    const actual = maxPointsPorFecha.get(s.match_id) ?? -Infinity;
-    if (s.points > actual) maxPointsPorFecha.set(s.match_id, s.points);
-  }
-  const estrellasDTMap = new Map<string, number>();
-  for (const s of dtScores) {
-    if (s.points > 0 && s.points === maxPointsPorFecha.get(s.match_id)) {
-      estrellasDTMap.set(
-        s.dt_member_id,
-        (estrellasDTMap.get(s.dt_member_id) ?? 0) + 1
-      );
-    }
-  }
-
   // ─── Estrellas Jugador: cuántas veces entró al Equipo Ideal de la fecha ───
   const scoresPorFecha = new Map<string, { member_id: string; points: number }[]>();
   for (const s of playerScores) {
@@ -309,10 +294,11 @@ export default async function RankingPage() {
 
   // ─── Ranking DT ───
   const dtTotales = new Map<string, number>();
-  for (const s of dtScores) {
-    dtTotales.set(s.dt_member_id, (dtTotales.get(s.dt_member_id) ?? 0) + s.points);
-  }
-
+  const dtPuntosPorFecha = new Map<
+    string,
+    { dt_member_id: string; points: number }[]
+  >();
+  const dtsCalculados = new Set<string>();
   const equiposPorDT = new Map<string, EquipoDTFecha[]>();
   const scoresJugadorPorMatch = new Map<string, Map<string, number>>();
   for (const s of playerScores) {
@@ -327,10 +313,25 @@ export default async function RankingPage() {
     if (!partido) continue;
 
     const puntosMap = scoresJugadorPorMatch.get(f.match_id) ?? new Map();
-    const dtPuntos =
-      dtScores.find(
-        (d) => d.match_id === f.match_id && d.dt_member_id === f.dt_member_id
-      )?.points ?? 0;
+    const dtPuntos = calcularPuntajeDT(
+      f.fantasy_picks.map((pick) => ({
+        slot: pick.slot,
+        points: puntosMap.get(pick.member_id) ?? 0,
+      }))
+    );
+    const claveDTFecha = `${f.match_id}:${f.dt_member_id}`;
+    dtsCalculados.add(claveDTFecha);
+    dtTotales.set(
+      f.dt_member_id,
+      (dtTotales.get(f.dt_member_id) ?? 0) + dtPuntos
+    );
+    if (!dtPuntosPorFecha.has(f.match_id)) {
+      dtPuntosPorFecha.set(f.match_id, []);
+    }
+    dtPuntosPorFecha.get(f.match_id)!.push({
+      dt_member_id: f.dt_member_id,
+      points: dtPuntos,
+    });
 
     const titulares: JugadorEnFecha[] = f.fantasy_picks
       .filter((p) => p.slot === "titular")
@@ -366,6 +367,31 @@ export default async function RankingPage() {
       titulares,
       suplente,
     });
+  }
+
+  for (const s of dtScores) {
+    if (dtsCalculados.has(`${s.match_id}:${s.dt_member_id}`)) continue;
+    dtTotales.set(s.dt_member_id, (dtTotales.get(s.dt_member_id) ?? 0) + s.points);
+    if (!dtPuntosPorFecha.has(s.match_id)) {
+      dtPuntosPorFecha.set(s.match_id, []);
+    }
+    dtPuntosPorFecha.get(s.match_id)!.push({
+      dt_member_id: s.dt_member_id,
+      points: s.points,
+    });
+  }
+
+  const estrellasDTMap = new Map<string, number>();
+  for (const puntajes of dtPuntosPorFecha.values()) {
+    const maxPoints = Math.max(...puntajes.map((score) => score.points));
+    if (maxPoints <= 0) continue;
+    for (const score of puntajes) {
+      if (score.points !== maxPoints) continue;
+      estrellasDTMap.set(
+        score.dt_member_id,
+        (estrellasDTMap.get(score.dt_member_id) ?? 0) + 1
+      );
+    }
   }
 
   for (const arr of equiposPorDT.values()) {

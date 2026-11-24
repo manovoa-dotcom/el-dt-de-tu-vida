@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition, useState } from "react";
 import Avatar from "@/components/Avatar";
 import Carta from "@/components/Carta";
 import CanchaEquipo from "@/components/CanchaEquipo";
+import { formatearPuntos } from "@/lib/puntaje-dt";
 import { anularTarjeta, rehabilitarTarjeta } from "./actions";
 import type {
   DTRanking,
@@ -94,6 +96,21 @@ export default function RankingClient({
         <TabBtn activo={tab === "jugadores"} onClick={() => setTab("jugadores")}>
           Posiciones Jugadores del torneo
         </TabBtn>
+      </div>
+
+      <div className="mx-3 mt-3">
+        <Link
+          href="/ranking/coleccion"
+          className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold no-underline"
+          style={{
+            background: "rgba(242,182,50,0.12)",
+            border: "1px solid rgba(242,182,50,0.28)",
+            color: "var(--gold)",
+          }}
+        >
+          <span>🗂️ Colección de cartas</span>
+          <span aria-hidden="true">→</span>
+        </Link>
       </div>
 
       {tab === "dt" && (
@@ -337,7 +354,7 @@ function FilaDT({
         </div>
       </div>
       <span className="bebas text-xl" style={{ color: colorPos }}>
-        {dt.total_points}
+        {formatearPuntos(dt.total_points)}
       </span>
       <span className="text-xs" style={{ color: "var(--dim)" }}>
         ›
@@ -541,7 +558,7 @@ function EquipoHistorial({
         </div>
         <div className="flex items-center gap-3">
           <span className="bebas text-lg" style={{ color: "var(--gold)" }}>
-            {eq.points} pts
+            {formatearPuntos(eq.points)} pts
           </span>
           <span
             className="text-xs transition"
@@ -575,6 +592,7 @@ function EquipoHistorial({
                     }
                   : null
               }
+              suplentePuntosMitad
             />
           ) : (
             <div

@@ -30,6 +30,9 @@ export default function Carta({
 }: Props) {
   const s = SIZES[size];
   const mostrarPosicion = posicion !== null && posicion !== undefined;
+  const puntosTexto = new Intl.NumberFormat("es-AR", {
+    maximumFractionDigits: 1,
+  }).format(puntos);
 
   return (
     <button
@@ -62,7 +65,7 @@ export default function Carta({
         className="bebas"
         style={{ fontSize: s.pts, color: "var(--gold)", lineHeight: 1 }}
       >
-        {puntos}
+        {puntosTexto}
       </div>
       {(mostrarPosicion || estrellas > 0) && (
         <div className="mt-0.5 flex items-center gap-1.5">

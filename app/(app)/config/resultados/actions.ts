@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { crearNoticiaAuto } from "@/lib/news";
 import { getFraseNoUsada } from "@/lib/phrases";
+import { generarPdfPodioFecha } from "@/lib/server/dt-card-archive";
 
 export type ActionResult = {
   ok: boolean;
@@ -131,6 +132,23 @@ export async function guardarResultados(
 
   // 5. Marcar partido como jugado
   await supabase.from("matches").update({ status: "jugada" }).eq("id", matchId);
+
+  let avisoPdf: string | null = null;
+  try {
+    const pdf = await generarPdfPodioFecha(supabase, {
+      id: match.id,
+      group_id: match.group_id,
+      season_id: match.season_id,
+      number: match.number,
+      kickoff_at: match.kickoff_at,
+    });
+    if (pdf.cartas === 0) {
+      avisoPdf = " No se encontraron equipos para generar las cartas.";
+    }
+  } catch (error) {
+    console.error("Could not archive the DT podium PDF:", error);
+    avisoPdf = " No se pudo generar el PDF; podés reintentarlo desde Ranking → Colección.";
+  }
 
    // Push: avisar a todos los miembros activos
   const userIds = await getUserIdDeMiembros(membership.group_id);
@@ -348,7 +366,53 @@ export async function guardarResultados(
   revalidatePath("/inicio");
   revalidatePath("/resultados");
   revalidatePath("/ranking");
+  revalidatePath("/ranking/coleccion");
   revalidatePath("/convocatoria");
 
-  return { ok: true, message: "Resultados guardados y puntajes calculados" };
+  return {
+    ok: true,
+    message: `Resultados guardados y puntajes calculados.${avisoPdf ?? ""}`,
+  };
+}
+
+export async function regenerarPdfFecha(matchId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const membership = await getCurrentGroupMembership(supabase, user.id, [
+    "activo",
+  ]);
+  if (!membership || membership.role !== "admin") {
+    return { ok: false, error: "Solo el admin puede generar el PDF" };
+  }
+
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .select("id, group_id, season_id, number, kickoff_at, status")
+    .eq("id", matchId)
+    .eq("group_id", membership.group_id)
+    .maybeSingle();
+  if (matchError) {
+    console.error("Could not load match to generate podium PDF:", matchError);
+    return { ok: false, error: "No se pudo cargar la fecha" };
+  }
+  if (!match || !["jugada", "cerrada"].includes(match.status)) {
+    return { ok: false, error: "La fecha todavía no tiene resultados" };
+  }
+
+  try {
+    const result = await generarPdfPodioFecha(supabase, match);
+    if (result.cartas === 0) {
+      return { ok: false, error: "No hay equipos para generar las cartas" };
+    }
+  } catch (error) {
+    console.error("Could not regenerate the DT podium PDF:", error);
+    return { ok: false, error: "No se pudo generar el PDF" };
+  }
+
+  revalidatePath("/ranking/coleccion");
+  return { ok: true, message: `PDF de la Fecha ${match.number} generado` };
 }
