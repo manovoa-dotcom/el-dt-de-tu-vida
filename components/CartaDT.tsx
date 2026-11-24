@@ -136,12 +136,19 @@ export default function CartaDT({
           <img src={illustrationUrl} alt={nombre || alias} />
         ) : (
           <div className="carta-dt-avatar-circulo">
-            <Avatar
-              alias={nombre || alias}
-              photoUrl={photoUrl}
-              size={68}
-              ringColor="rgba(255,255,255,0.85)"
-            />
+            {photoUrl ? (
+              <Avatar
+                alias={nombre || alias}
+                photoUrl={photoUrl}
+                size={68}
+                ringColor="rgba(255,255,255,0.85)"
+              />
+            ) : (
+              <div className="carta-dt-avatar-escudo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/cards/escudo-juego.png" alt="Escudo del juego" />
+              </div>
+            )}
           </div>
         )}
       </div>

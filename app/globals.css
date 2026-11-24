@@ -228,10 +228,10 @@ body {
 .carta-dt-avatar-fallback {
   position: absolute;
   z-index: 10;
-  left: 10%;
-  top: 10%;
-  width: 18cqw;
-  height: 18cqw;
+  left: 14%;
+  top: 14%;
+  width: 36cqw;
+  height: 36cqw;
 }
 
 .carta-dt-avatar-circulo,
@@ -254,6 +254,22 @@ body {
 .carta-dt-avatar-circulo > div {
   border-width: 1.5px !important;
   font-size: 7cqw !important;
+}
+
+.carta-dt-avatar-escudo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(14, 48, 29, 0.9);
+}
+
+.carta-dt-avatar-escudo img {
+  width: 90%;
+  height: 90%;
 }
 
 .carta-dt-medalla {
