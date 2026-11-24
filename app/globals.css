@@ -103,6 +103,58 @@ body {
 }
 
 /* Carta visual de los DT ganadores */
+.podio-dt-carousel {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 0 16px 8px;
+}
+
+.podio-dt-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.podio-dt-carousel-single {
+  justify-content: center;
+}
+
+.podio-dt-card {
+  flex: 0 0 min(78vw, 320px);
+  min-width: 0;
+  scroll-snap-align: center;
+}
+
+@media (min-width: 768px) {
+  .podio-dt-carousel {
+    justify-content: center;
+    gap: 4px;
+    overflow: visible;
+    scroll-snap-type: none;
+    padding: 0 4px;
+  }
+
+  .podio-dt-card {
+    flex: 1 1 0;
+    scroll-snap-align: none;
+  }
+
+  .podio-dt-card-oro {
+    order: 2;
+  }
+
+  .podio-dt-card-plata {
+    order: 1;
+  }
+
+  .podio-dt-card-bronce {
+    order: 3;
+  }
+}
+
 .carta-dt {
   position: relative;
   display: block;

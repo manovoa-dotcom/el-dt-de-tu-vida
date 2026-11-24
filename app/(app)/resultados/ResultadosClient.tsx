@@ -141,62 +141,33 @@ export default function ResultadosClient({
           <div className="bebas mt-6 px-4 text-xl tracking-wider">
             🏆 DT DE LA FECHA
           </div>
-          <div className="mt-3 flex items-end justify-center gap-1 px-1">
-            {podio.length === 1 && (
-              <PodioDT
-                dt={podio[0]}
-                posicion={1}
-                fecha={partidoActual.number}
-                fechaTexto={fechaTexto}
-                onClick={() => setDtSeleccionado(podio[0])}
-              />
-            )}
-            {podio.length === 2 && (
-              <>
+          <div
+            className={`podio-dt-carousel mt-3 ${podio.length === 1 ? "podio-dt-carousel-single" : ""}`}
+            role="region"
+            aria-label="Cartas de los DTs ganadores"
+            tabIndex={0}
+          >
+            {podio.map((dt, index) => {
+              const posicion = index === 0 ? 1 : index === 1 ? 2 : 3;
+              return (
                 <PodioDT
-                  dt={podio[1]}
-                  posicion={2}
+                  key={dt.member_id}
+                  dt={dt}
+                  posicion={posicion}
                   fecha={partidoActual.number}
                   fechaTexto={fechaTexto}
-                  onClick={() => setDtSeleccionado(podio[1])}
+                  onClick={() => setDtSeleccionado(dt)}
                 />
-                <PodioDT
-                  dt={podio[0]}
-                  posicion={1}
-                  fecha={partidoActual.number}
-                  fechaTexto={fechaTexto}
-                  onClick={() => setDtSeleccionado(podio[0])}
-                />
-              </>
-            )}
-            {podio.length >= 3 && (
-              <>
-                <PodioDT
-                  dt={podio[1]}
-                  posicion={2}
-                  fecha={partidoActual.number}
-                  fechaTexto={fechaTexto}
-                  onClick={() => setDtSeleccionado(podio[1])}
-                />
-                <PodioDT
-                  dt={podio[0]}
-                  posicion={1}
-                  fecha={partidoActual.number}
-                  fechaTexto={fechaTexto}
-                  onClick={() => setDtSeleccionado(podio[0])}
-                />
-                <PodioDT
-                  dt={podio[2]}
-                  posicion={3}
-                  fecha={partidoActual.number}
-                  fechaTexto={fechaTexto}
-                  onClick={() => setDtSeleccionado(podio[2])}
-                />
-              </>
-            )}
+              );
+            })}
           </div>
           <p className="mt-2 text-center text-[11px]" style={{ color: "var(--dim)" }}>
-            Tocá una carta para ver el equipo armado
+            <span className="md:hidden">
+              Deslizá para ver las otras cartas · tocá una para ver el equipo
+            </span>
+            <span className="hidden md:inline">
+              Tocá una carta para ver el equipo armado
+            </span>
           </p>
         </>
       )}
@@ -356,9 +327,10 @@ function PodioDT({
     normalizedAlias === "mariano el rustico"
       ? "/dt-avatars/mariano-el-rustico.png"
       : null;
+  const medalla = posicion === 1 ? "oro" : posicion === 2 ? "plata" : "bronce";
 
   return (
-    <div className="min-w-0" style={{ flex: 1 }}>
+    <div className={`podio-dt-card podio-dt-card-${medalla}`}>
       <CartaDT
         nombre={dt.real_name}
         alias={dt.alias}
