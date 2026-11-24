@@ -29,6 +29,7 @@ type Props = {
   medallaEquipoIdeal?: boolean;
   sinMedalla?: boolean;
   illustrationUrl?: string | null;
+  illustrationVariant?: "player" | "charly-dt";
   onClick?: () => void;
 };
 
@@ -52,6 +53,7 @@ export default function CartaDT({
   medallaEquipoIdeal = false,
   sinMedalla = false,
   illustrationUrl,
+  illustrationVariant,
   onClick,
 }: Props) {
   const medalla = medallaEquipoIdeal
@@ -84,6 +86,12 @@ export default function CartaDT({
     : sinMedalla
       ? `Carta de ${nombre || alias}, ${puntos} puntos, con detalle de ítems.`
       : `Ver equipo de ${alias}, ${puntos} puntos, ${medalla.label}. El suplente suma la mitad de sus puntos.`;
+  const illustrationVariantClass =
+    illustrationVariant === "player"
+      ? " carta-dt-avatar-ilustracion-jugador"
+      : illustrationVariant === "charly-dt"
+        ? " carta-dt-avatar-ilustracion-charly-dt"
+        : "";
 
   return (
     <button
@@ -119,7 +127,7 @@ export default function CartaDT({
       <div
         className={
           illustrationUrl
-            ? "carta-dt-avatar carta-dt-avatar-ilustracion"
+            ? `carta-dt-avatar carta-dt-avatar-ilustracion${illustrationVariantClass}`
             : "carta-dt-avatar carta-dt-avatar-fallback"
         }
       >

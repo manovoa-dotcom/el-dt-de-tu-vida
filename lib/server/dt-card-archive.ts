@@ -7,6 +7,7 @@ import {
   type PDFFont,
 } from "pdf-lib";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getDTAvatarUrl } from "@/lib/dt-avatars";
 import { calcularPuntajeDT, formatearPuntos } from "@/lib/puntaje-dt";
 
 const BUCKET = "dt-card-archives";
@@ -204,17 +205,36 @@ export async function generarPdfPodioFecha(
     await pdf.embedPng(logoBytes),
     ...(await Promise.all(medalBytes.map((bytes) => pdf.embedPng(bytes)))),
   ]);
-  const illustration = await pdf.embedPng(
-    await readFile(
-      path.join(process.cwd(), "public", "dt-avatars", "mariano-el-rustico.png")
+  const illustrationUrls = [
+    ...new Set(
+      cards
+        .map((card) => getDTAvatarUrl(card.alias))
+        .filter((url): url is string => url !== null)
+    ),
+  ];
+  const customIllustrations = new Map(
+    await Promise.all(
+      illustrationUrls.map(async (url) => {
+        const assetPath = path.join(
+          process.cwd(),
+          "public",
+          ...url.slice(1).split("/")
+        );
+        const image = await pdf.embedPng(await readFile(assetPath));
+        return [url, image] as const;
+      })
     )
   );
   const photoImages = await Promise.all(
-    cards.map((card) =>
-      isMariano(card.alias)
+    cards.map((card) => {
+      const illustrationUrl = getDTAvatarUrl(card.alias);
+      const illustration = illustrationUrl
+        ? customIllustrations.get(illustrationUrl)
+        : undefined;
+      return illustration
         ? Promise.resolve(illustration)
-        : embedProfilePhoto(pdf, supabase, card.photoUrl)
-    )
+        : embedProfilePhoto(pdf, supabase, card.photoUrl);
+    })
   );
   const dateText = formatDate(match.kickoff_at);
 
@@ -456,15 +476,6 @@ async function embedProfilePhoto(
   if (data.type === "image/png") return pdf.embedPng(bytes);
   if (data.type === "image/jpeg") return pdf.embedJpg(bytes);
   return null;
-}
-
-function isMariano(alias: string): boolean {
-  const normalized = alias
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-  return normalized === "el rustico" || normalized === "mariano el rustico";
 }
 
 function drawImageTop(

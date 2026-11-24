@@ -11,6 +11,8 @@ import {
   DIAS_SEMANA,
   MESES_CORTOS,
 } from "@/lib/fecha";
+import { getDTAvatarUrl } from "@/lib/dt-avatars";
+import { getPlayerAvatarUrl } from "@/lib/player-avatars";
 import { formatearPuntos } from "@/lib/puntaje-dt";
 import type {
   DTResultado,
@@ -209,6 +211,7 @@ export default function ResultadosClient({
                   integranteEquipoIdeal: idsEquipoIdeal.has(
                     jugador.member_id
                   ),
+                  illustrationUrl: getPlayerAvatarUrl(jugador.alias),
                 }))}
                 suplente={
                   dtSeleccionado.equipo.suplente
@@ -216,6 +219,9 @@ export default function ResultadosClient({
                         ...dtSeleccionado.equipo.suplente,
                         integranteEquipoIdeal: idsEquipoIdeal.has(
                           dtSeleccionado.equipo.suplente.member_id
+                        ),
+                        illustrationUrl: getPlayerAvatarUrl(
+                          dtSeleccionado.equipo.suplente.alias
                         ),
                       }
                     : null
@@ -263,6 +269,7 @@ export default function ResultadosClient({
                 photo_url: j.photo_url,
                 points: j.points,
                 items: j.items,
+                illustrationUrl: getPlayerAvatarUrl(j.alias),
               }))}
               cartasEquipoIdeal
               maxWidth="100%"
@@ -334,16 +341,7 @@ function PodioDT({
   fechaTexto: string;
   onClick: () => void;
 }) {
-  const normalizedAlias = dt.alias
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-  const illustrationUrl =
-    normalizedAlias === "el rustico" ||
-    normalizedAlias === "mariano el rustico"
-      ? "/dt-avatars/mariano-el-rustico.png"
-      : null;
+  const illustrationUrl = getDTAvatarUrl(dt.alias);
   const medalla = posicion === 1 ? "oro" : posicion === 2 ? "plata" : "bronce";
 
   return (
@@ -359,6 +357,11 @@ function PodioDT({
         titulares={dt.equipo.titulares}
         suplente={dt.equipo.suplente}
         illustrationUrl={illustrationUrl}
+        illustrationVariant={
+          illustrationUrl === "/dt-avatars/charly-novoa.png"
+            ? "charly-dt"
+            : undefined
+        }
         onClick={onClick}
       />
     </div>

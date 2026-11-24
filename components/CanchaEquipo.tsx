@@ -12,6 +12,7 @@ export type JugadorCancha = {
   real_name?: string;
   items?: ItemCartaDT[];
   integranteEquipoIdeal?: boolean;
+  illustrationUrl?: string | null;
   posicion?: number | null;
   estrellas?: number;
 };
@@ -230,6 +231,8 @@ export default function CanchaEquipo({
                   items={j.items}
                   medallaEquipoIdeal={medallaEquipoIdeal}
                   sinMedalla={sinMedalla}
+                  illustrationUrl={j.illustrationUrl}
+                  illustrationVariant="player"
                   onClick={
                     esMovil
                       ? () =>
@@ -293,6 +296,8 @@ export default function CanchaEquipo({
                 titulares={[]}
                 suplente={null}
                 items={suplente.items}
+                illustrationUrl={suplente.illustrationUrl}
+                illustrationVariant="player"
                 medallaEquipoIdeal={
                   cartasEquipoIdeal ||
                   suplente.integranteEquipoIdeal === true
@@ -416,6 +421,8 @@ function CartaDTModal({
           titulares={[]}
           suplente={null}
           items={jugador.items}
+          illustrationUrl={jugador.illustrationUrl}
+          illustrationVariant="player"
           medallaEquipoIdeal={medallaEquipoIdeal}
           sinMedalla={sinMedalla}
         />
