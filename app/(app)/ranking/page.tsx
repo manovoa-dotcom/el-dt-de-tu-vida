@@ -32,7 +32,11 @@ export type DTRanking = {
   photo_url: string | null;
   is_me: boolean;
   total_points: number;
-  estrellas: number;
+  medallas: {
+    oro: number;
+    plata: number;
+    bronce: number;
+  };
   equipos: EquipoDTFecha[];
 };
 
@@ -381,16 +385,27 @@ export default async function RankingPage() {
     });
   }
 
-  const estrellasDTMap = new Map<string, number>();
+  const medallasDTMap = new Map<
+    string,
+    { oro: number; plata: number; bronce: number }
+  >();
   for (const puntajes of dtPuntosPorFecha.values()) {
     const maxPoints = Math.max(...puntajes.map((score) => score.points));
     if (maxPoints <= 0) continue;
-    for (const score of puntajes) {
-      if (score.points !== maxPoints) continue;
-      estrellasDTMap.set(
-        score.dt_member_id,
-        (estrellasDTMap.get(score.dt_member_id) ?? 0) + 1
-      );
+
+    const podio = [...puntajes]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 3);
+    for (const [index, score] of podio.entries()) {
+      const medallas = medallasDTMap.get(score.dt_member_id) ?? {
+        oro: 0,
+        plata: 0,
+        bronce: 0,
+      };
+      const tipo =
+        index === 0 ? "oro" : index === 1 ? "plata" : "bronce";
+      medallas[tipo] += 1;
+      medallasDTMap.set(score.dt_member_id, medallas);
     }
   }
 
@@ -408,7 +423,7 @@ export default async function RankingPage() {
         photo_url: info?.photo_url ?? null,
         is_me: m.id === membership.id,
         total_points: dtTotales.get(m.id) ?? 0,
-        estrellas: estrellasDTMap.get(m.id) ?? 0,
+        medallas: medallasDTMap.get(m.id) ?? { oro: 0, plata: 0, bronce: 0 },
         equipos: equiposPorDT.get(m.id) ?? [],
       };
     })

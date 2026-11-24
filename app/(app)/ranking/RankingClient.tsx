@@ -205,7 +205,14 @@ export default function RankingClient({
       )}
 
       <div className="bebas mt-8 px-4 text-xl tracking-wider">
-        ⭐ EQUIPO IDEAL DEL TORNEO
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/cards/medalla-equipo-ideal.png"
+          alt=""
+          aria-hidden="true"
+          className="mr-1 inline-block h-5 w-3 object-contain align-middle"
+        />
+        EQUIPO IDEAL DEL TORNEO
       </div>
       <p className="px-4 text-[11px]" style={{ color: "var(--dim)" }}>
         {dtDelAnio ? "1 DT + " : ""}
@@ -219,7 +226,7 @@ export default function RankingClient({
             photoUrl={dtDelAnio.photo_url}
             puntos={dtDelAnio.total_points}
             posicion={1}
-            estrellas={dtDelAnio.estrellas}
+            medallasDT={dtDelAnio.medallas}
             size="lg"
             onClick={() => setFichaDT(dtDelAnio.member_id)}
           />
@@ -239,6 +246,7 @@ export default function RankingClient({
                 1,
               estrellas: j.estrellas,
             }))}
+            medallaIdealEstrellas
           />
         </div>
       ) : (
@@ -313,6 +321,19 @@ function FilaDT({
 }) {
   const colorPos =
     posicion === 1 ? "var(--gold)" : posicion <= 3 ? "var(--tx)" : "var(--dim)";
+  const medallas = [
+    { nombre: "Oro", cantidad: dt.medallas.oro, archivo: "medalla-oro.png" },
+    {
+      nombre: "Plata",
+      cantidad: dt.medallas.plata,
+      archivo: "medalla-plata.png",
+    },
+    {
+      nombre: "Bronce",
+      cantidad: dt.medallas.bronce,
+      archivo: "medalla-bronce.png",
+    },
+  ];
   return (
     <button
       type="button"
@@ -348,8 +369,30 @@ function FilaDT({
             )}
           </span>
         </div>
-        <div className="text-[11px]" style={{ color: "var(--dim)" }}>
-          {dt.estrellas > 0 && `⭐ ${dt.estrellas} · `}
+        <div
+          className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]"
+          style={{ color: "var(--dim)" }}
+        >
+          {medallas.map(
+            ({ nombre, cantidad, archivo }) =>
+              cantidad > 0 && (
+                <span
+                  key={nombre}
+                  className="inline-flex items-center gap-0.5"
+                  aria-label={`${nombre}: ${cantidad}`}
+                  role="img"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/cards/${archivo}`}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-[18px] w-3 object-contain"
+                  />
+                  {cantidad}
+                </span>
+              )
+          )}
           {dt.equipos.length} fecha{dt.equipos.length !== 1 ? "s" : ""}
         </div>
       </div>
@@ -437,8 +480,18 @@ function FilaJugador({
           )}
         </div>
         {!filtroItem && jugador.estrellas > 0 && (
-          <div className="text-[10px]" style={{ color: "var(--dim)" }}>
-            ⭐ {jugador.estrellas} equipo{jugador.estrellas !== 1 ? "s" : ""} ideal
+          <div
+            className="flex items-center gap-1 text-[10px]"
+            style={{ color: "var(--dim)" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cards/medalla-equipo-ideal.png"
+              alt=""
+              aria-hidden="true"
+              className="h-4 w-[10px] object-contain"
+            />
+            {jugador.estrellas} equipo{jugador.estrellas !== 1 ? "s" : ""} ideal
           </div>
         )}
       </div>
@@ -481,7 +534,7 @@ function FichaDT({
           photoUrl={dt.photo_url}
           puntos={dt.total_points}
           posicion={posicion}
-          estrellas={dt.estrellas}
+          medallasDT={dt.medallas}
           size="lg"
         />
       </div>
@@ -643,6 +696,7 @@ function FichaJugador({
           puntos={jugador.total_points}
           posicion={posicion}
           estrellas={jugador.estrellas}
+          medallaIdeal
           size="lg"
         />
       </div>

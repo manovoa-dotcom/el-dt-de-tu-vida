@@ -46,13 +46,19 @@ export default function NoticiaCard({
 
   function compartir() {
     const texto = authorAlias
-      ? `${authorAlias} en El DT de tu vida:\n\n${titulo}`
-      : `${titulo}\n\nEl DT de tu vida`;
+      ? `${authorAlias} en El DT de tu vida:\n\n${tituloMostrado}`
+      : `${tituloMostrado}\n\nEl DT de tu vida`;
     const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     window.open(url, "_blank");
   }
 
   const esAuto = kind === "auto";
+  const esNoticiaEquipoIdeal =
+    titulo.startsWith("⭐ Equipo Ideal de la Fecha") ||
+    titulo.startsWith("Equipo Ideal de la Fecha");
+  const tituloMostrado = esNoticiaEquipoIdeal
+    ? titulo.replace(/^⭐\s*/, "")
+    : titulo;
 
   return (
     <article
@@ -91,7 +97,16 @@ export default function NoticiaCard({
         className={`${!esAuto && authorAlias ? "mt-2" : esAuto ? "mt-1" : ""} whitespace-pre-wrap text-sm`}
         style={{ color: "var(--tx)" }}
       >
-        {titulo}
+        {esNoticiaEquipoIdeal && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/cards/medalla-equipo-ideal.png"
+            alt=""
+            aria-hidden="true"
+            className="mr-1 inline-block h-[22px] w-[14px] object-contain align-middle"
+          />
+        )}
+        {tituloMostrado}
       </div>
       {cuerpo && (
         <div className="mt-1 text-xs" style={{ color: "var(--dim)" }}>

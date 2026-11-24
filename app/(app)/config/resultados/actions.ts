@@ -339,7 +339,7 @@ export async function guardarResultados(
     if (nombres) {
       await crearNoticiaAuto({
         groupId: membership.group_id,
-        title: `⭐ Equipo Ideal de la Fecha ${match.number}`,
+        title: `Equipo Ideal de la Fecha ${match.number}`,
         body: nombres,
         payload: { match_id: matchId },
       });

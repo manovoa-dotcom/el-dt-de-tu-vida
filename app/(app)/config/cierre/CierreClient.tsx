@@ -353,7 +353,14 @@ function ResumenCierreUI({
       {r.equipo_ideal.jugadores.length > 0 && (
         <>
           <div className="bebas mt-4 px-1 text-lg tracking-wider">
-            ⭐ EQUIPO IDEAL DEL AÑO
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cards/medalla-equipo-ideal.png"
+              alt=""
+              aria-hidden="true"
+              className="mr-1 inline-block h-5 w-3 object-contain align-middle"
+            />
+            EQUIPO IDEAL DEL AÑO
           </div>
           <div
             className="mt-2 rounded-2xl p-4"

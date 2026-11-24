@@ -141,7 +141,7 @@ export default function ResultadosClient({
           <div className="bebas mt-6 px-4 text-xl tracking-wider">
             🏆 DT DE LA FECHA
           </div>
-          <div className="mt-3 flex items-end justify-center gap-2 px-3">
+          <div className="mt-3 flex items-end justify-center gap-1 px-1">
             {podio.length === 1 && (
               <PodioDT
                 dt={podio[0]}
@@ -258,7 +258,14 @@ export default function ResultadosClient({
       {equipoIdeal.length > 0 && (
         <>
           <div className="bebas mt-6 px-4 text-xl tracking-wider">
-            ⭐ EQUIPO IDEAL
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cards/medalla-equipo-ideal.png"
+              alt=""
+              aria-hidden="true"
+              className="mr-1 inline-block h-5 w-3 object-contain align-middle"
+            />
+            EQUIPO IDEAL
           </div>
           <p className="px-4 text-[11px]" style={{ color: "var(--dim)" }}>
             Los {equipoIdeal.length} mejores de la fecha

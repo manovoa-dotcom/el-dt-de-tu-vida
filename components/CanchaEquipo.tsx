@@ -102,6 +102,7 @@ type Props = {
   maxWidth?: number | string;
   cartasEquipoIdeal?: boolean;
   cartasEquipoDT?: boolean;
+  medallaIdealEstrellas?: boolean;
   fecha?: number;
   fechaTexto?: string;
 };
@@ -113,6 +114,7 @@ export default function CanchaEquipo({
   maxWidth = 460,
   cartasEquipoIdeal = false,
   cartasEquipoDT = false,
+  medallaIdealEstrellas = false,
   fecha,
   fechaTexto,
 }: Props) {
@@ -188,11 +190,7 @@ export default function CanchaEquipo({
                 left: `${x}%`,
                 top: `${y}%`,
                 transform: "translate(-50%, -50%)",
-                width: cartasEquipoIdeal
-                  ? "calc(33.333% - 10.67px)"
-                  : cartasEquipoDT
-                    ? "calc(33.333% - 10.67px)"
-                    : undefined,
+                width: usaCartaDT ? "calc(33.333% - 4px)" : undefined,
               }}
             >
               {usaCartaDT ? (
@@ -217,6 +215,7 @@ export default function CanchaEquipo({
                   puntos={j.points}
                   posicion={j.posicion}
                   estrellas={j.estrellas ?? 0}
+                  medallaIdeal={medallaIdealEstrellas}
                   size="xs"
                 />
               )}
@@ -244,7 +243,7 @@ export default function CanchaEquipo({
               : "SUPLENTE"}
           </div>
           {cartasEquipoDT ? (
-            <div style={{ width: "calc(33.333% - 10.67px)" }}>
+            <div style={{ width: "calc(33.333% - 4px)" }}>
               <CartaDT
                 nombre={suplente.real_name ?? ""}
                 alias={suplente.alias}

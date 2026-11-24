@@ -8,6 +8,8 @@ type Props = {
   puntos: number;
   posicion?: number | null;
   estrellas?: number;
+  medallaIdeal?: boolean;
+  medallasDT?: { oro: number; plata: number; bronce: number };
   size?: "xs" | "sm" | "md" | "lg";
   onClick?: () => void;
 };
@@ -25,11 +27,16 @@ export default function Carta({
   puntos,
   posicion,
   estrellas = 0,
+  medallaIdeal = false,
+  medallasDT,
   size = "md",
   onClick,
 }: Props) {
   const s = SIZES[size];
   const mostrarPosicion = posicion !== null && posicion !== undefined;
+  const conteoMedallasDT = medallasDT ?? { oro: 0, plata: 0, bronce: 0 };
+  const tieneMedallasDT =
+    conteoMedallasDT.oro + conteoMedallasDT.plata + conteoMedallasDT.bronce > 0;
   const puntosTexto = new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 1,
   }).format(puntos);
@@ -67,7 +74,7 @@ export default function Carta({
       >
         {puntosTexto}
       </div>
-      {(mostrarPosicion || estrellas > 0) && (
+      {(mostrarPosicion || estrellas > 0 || tieneMedallasDT) && (
         <div className="mt-0.5 flex items-center gap-1.5">
           {mostrarPosicion && (
             <span
@@ -77,14 +84,65 @@ export default function Carta({
               #{posicion}
             </span>
           )}
-          {estrellas > 0 && (
+          {tieneMedallasDT ? (
+            <span className="flex items-center gap-1">
+              {(
+                [
+                  ["oro", "Oro", conteoMedallasDT.oro, "medalla-oro.png"],
+                  ["plata", "Plata", conteoMedallasDT.plata, "medalla-plata.png"],
+                  ["bronce", "Bronce", conteoMedallasDT.bronce, "medalla-bronce.png"],
+                ] as const
+              ).map(
+                ([tipo, nombre, cantidad, archivo]) =>
+                  cantidad > 0 && (
+                    <span
+                      key={tipo}
+                      className="flex items-center gap-0.5 font-bold"
+                      style={{ fontSize: s.star, color: "var(--gold)" }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/cards/${archivo}`}
+                        alt={`Medalla de ${nombre}`}
+                        style={{
+                          width: s.star,
+                          height: s.star * 1.62,
+                          objectFit: "contain",
+                        }}
+                      />
+                      {cantidad}
+                    </span>
+                  )
+              )}
+            </span>
+          ) : estrellas > 0 ? (
             <span
               className="flex items-center gap-0.5 font-bold"
               style={{ fontSize: s.star, color: "var(--gold)" }}
+              aria-label={
+                medallaIdeal
+                  ? `${estrellas} veces en el Equipo Ideal`
+                  : undefined
+              }
             >
-              ⭐ {estrellas}
+              {medallaIdeal ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/cards/medalla-equipo-ideal.png"
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    width: s.star,
+                    height: s.star * 1.62,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <>⭐ {estrellas}</>
+              )}
+              {medallaIdeal && estrellas}
             </span>
-          )}
+          ) : null}
         </div>
       )}
     </button>
